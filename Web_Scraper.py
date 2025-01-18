@@ -32,15 +32,12 @@ def scrape_champion_winrates(champions_to_scrape):
         champion_winrates = {}
         for row in rows:
             try:
-                # Extract the champion name
                 champion_name_element = row.find_element(By.CSS_SELECTOR, 'td.css-1ufme2f strong')
                 champion_name = champion_name_element.text.strip().lower()  # Normalize name to lowercase
 
-                # If the champion is not in our list, skip it
                 if champion_name not in champions_to_scrape:
                     continue
 
-                # Extract the winrate
                 winrate_parent_div = row.find_element(By.CSS_SELECTOR, 'div.css-ed0c12')
                 winrate_child_div = winrate_parent_div.find_element(By.CSS_SELECTOR, 'div[font-weight="bold"]')
                 winrate = winrate_child_div.text.strip()
@@ -127,28 +124,23 @@ def scrape_players_and_champions(server, nickname):
 
 
 def get_combined_player_data(server, nickname):
-    # Step 1: Scrape players and their champions
     players_data = scrape_players_and_champions(server, nickname)
 
-    # Step 2: Extract unique champion names (normalized to lowercase) from players_data
     champions_to_scrape = {player["champion"].lower() for player in players_data}
 
-    # Step 3: Scrape winrates for the extracted champions
     champion_winrates = scrape_champion_winrates(champions_to_scrape)
 
-    # Step 4: Combine data
     for player in players_data:
         champion = player["champion"].lower()
         player["champion_winrate"] = champion_winrates.get(champion, "No data")
 
     return players_data
 
-# Example usage
 server = "eune"
 nickname = "bot nie sfeeduj-eune"
 combined_data = get_combined_player_data(server, nickname)
 
-init db()
+init_db()
 
 if combined_data:
     print("\nCombined Data:")
