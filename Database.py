@@ -13,6 +13,7 @@ def init_db():
         timestamp DATETIME,
         nickname TEXT,
         champion TEXT,
+        rank TEXT,
         player_winrate TEXT,
         champion_winrate TEXT
     )
@@ -28,12 +29,13 @@ def save_data_to_db(players_data):
 
     for player in players_data:
         cursor.execute("""
-        INSERT INTO match_data (timestamp, nickname, champion, player_winrate, champion_winrate)
+        INSERT INTO match_data (timestamp, nickname, champion, rank, player_winrate, champion_winrate)
         VALUES (?, ?, ?, ?, ?)
         """, (
             datetime.now(),  # Current timestamp
             player["nickname"],
             player["champion"],
+            player["rank"],
             player["winrate"],
             player["champion_winrate"]
         ))
