@@ -32,7 +32,7 @@ def save_data_to_db(players_data):
         INSERT INTO match_data (timestamp, nickname, champion, rank, player_winrate, champion_winrate)
         VALUES (?, ?, ?, ?, ?)
         """, (
-            datetime.now(),  # Current timestamp
+            datetime.now(),
             player["nickname"],
             player["champion"],
             player["rank"],

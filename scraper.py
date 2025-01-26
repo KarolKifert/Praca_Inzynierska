@@ -37,7 +37,6 @@ def scrape_champion_winrates(champions_to_scrape):
                 if champion_name not in champions_to_scrape:
                     continue
 
-                # **Handle dynamic class names for win rate**
                 try:
                     winrate_element = row.find_element(By.XPATH, ".//div[contains(@class, 'qzg52u') or contains(@class, '1xqka05')]")
                     winrate = winrate_element.text.strip()
@@ -149,7 +148,6 @@ def get_combined_player_data(server, nickname):
     for player in players_data:
         champion = player["champion"]
 
-        # **Normalize the champion name before lookup**
         normalized_champion = champion.lower().replace("'", "").replace(" ", "")
 
         player["champion_winrate"] = champion_winrates.get(champion, "No data")
@@ -158,6 +156,5 @@ def get_combined_player_data(server, nickname):
     return players_data
 
 
-# ✅ Remove manual input - The web interface will handle inputs
 if __name__ == "__main__":
     print("This script is designed to be imported into Flask, not run directly.")
