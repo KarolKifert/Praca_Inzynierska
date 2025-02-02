@@ -3,50 +3,58 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LoL Player Lookup</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <title>LoL Match Scraper</title>
+    <style>
+        table, th, td {
+            border: 1px solid black;
+            border-collapse: collapse;
+            padding: 10px;
+        }
+    </style>
 </head>
-<body class="bg-dark text-white">
-    <div class="container mt-5">
-        <h1 class="text-center">League of Legends Player Lookup</h1>
-        <form method="post" class="mt-4">
-            <div class="mb-3">
-                <label for="nickname" class="form-label">Nickname & Hashtag</label>
-                <input type="text" class="form-control" id="nickname" name="nickname" placeholder="nickname-hashtag">
-            </div>
-            <div class="mb-3">
-                <label for="server" class="form-label">Server</label>
-                <select class="form-control" id="server" name="server">
-                    <option value="eune">EUNE</option>
-                    <option value="euw">EUW</option>
-                    <option value="na">NA</option>
-                    <option value="kr">KR</option>
-                </select>
-            </div>
-            <button type="submit" class="btn btn-primary w-100">Search</button>
-        </form>
+<body>
+    <h1>League of Legends Match Scraper</h1>
 
-        {% if error %}
-            <div class="alert alert-danger mt-3">{{ error }}</div>
-        {% endif %}
+    <form method="POST">
+        <label for="server">Server:</label>
+        <input type="text" id="server" name="server" required>
 
-{% if player_data %}
-    <div class="card mt-4 p-3 bg-secondary">
-        <h4>Player Match Data</h4>
-        <ul class="list-group">
-            {% for player in player_data %}
-                <li class="list-group-item bg-dark text-white">
-                    <strong>{{ player.nickname }}</strong>
-                    ({{ player.champion }}) - Winrate: {{ player.winrate }}
-                    | Champion Winrate: {{ player.champion_winrate }}
-                    | Rank: {{ player.rank }}
-                </li>
-            {% endfor %}
-        </ul>
-    </div>
-{% endif %}
+        <label for="nickname">Summoner Name:</label>
+        <input type="text" id="nickname" name="nickname" required>
+
+        <button type="submit">Scrape Match</button>
+    </form>
+
+    {% if message %}
+        <p>{{ message }}</p>
+    {% endif %}
+
+<h2>Stored Matches</h2>
+<table>
+    <tr>
+        <th>Match ID</th>
+        <th>Timestamp</th>
+        <th>Server</th>
+        <th>Team 1 Elo</th>
+        <th>Team 2 Elo</th>
+        <th>Team 1 Win %</th>
+        <th>Team 2 Win %</th>
+        <th>View Data</th>
+    </tr>
+    {% for match in matches %}
+    <tr>
+        <td>{{ match[0] }}</td>
+        <td>{{ match[1] }}</td>
+        <td>{{ match[2] }}</td>
+        <td>{{ match[3] }}</td>
+        <td>{{ match[4] }}</td>
+        <td>{{ match[5] }}%</td>
+        <td>{{ match[6] }}%</td>
+        <td><a href="/match/{{ match[0] }}" target="_blank">View</a></td>
+    </tr>
+    {% endfor %}
+</table>
 
 
-    </div>
 </body>
 </html>

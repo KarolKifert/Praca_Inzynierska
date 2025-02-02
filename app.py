@@ -1,30 +1,36 @@
-from flask import Flask, render_template, request
-from scraper import get_combined_player_data
+from flask import Flask, render_template, request, jsonify
+from scraper import scrape_players_and_champions
+from elo_calculator import calculate_match_probability, pop_means, pop_std
+from database import save_match, get_match_history
 
 app = Flask(__name__)
 
 @app.route("/", methods=["GET", "POST"])
-def home():
+def index():
     if request.method == "POST":
-        nickname_input = request.form["nickname"]
         server = request.form["server"]
+        nickname = request.form["nickname"]
 
-        if not nickname_input or not server:
-            return render_template("index.html", error="Please fill in all fields.")
+        # Scrape match data
+        players_data, _ = scrape_players_and_champions(server, nickname)
 
-        if "-" in nickname_input:
-            nickname, hashtag = nickname_input.split("-", 1)
-        else:
-            return render_template("index.html", error="Invalid nickname format. Use nickname-hashtag.")
+        if not players_data:
+            return render_template("index.html", message="Error: Could not fetch match data.")
 
-        try:
-            player_data = get_combined_player_data(server, nickname_input)
-        except Exception as e:
-            return render_template("index.html", error=f"Scraping error: {str(e)}")
+        # Split into two teams (assuming first 5 players are team 1, next 5 are team 2)
+        team1, team2 = players_data[:5], players_data[5:]
 
-        return render_template("index.html", player_data=player_data)
+        # Calculate match probability
+        match_probability = calculate_match_probability(team1, team2, pop_means, pop_std)
 
-    return render_template("index.html")
+        # Save match data
+        match_id = save_match(players_data, match_probability)
+
+        return render_template("index.html", match_data=players_data, match_probability=match_probability, match_id=match_id)
+
+    # Fetch match history
+    match_history = get_match_history()
+    return render_template("index.html", match_history=match_history)
 
 if __name__ == "__main__":
     app.run(debug=True)
