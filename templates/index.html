@@ -29,14 +29,12 @@
         <p>{{ message }}</p>
     {% endif %}
 
-<h2>Stored Matches</h2>
-<table>
+    <h2>Stored Matches</h2>
+<table border="1">
     <tr>
         <th>Match ID</th>
         <th>Timestamp</th>
         <th>Server</th>
-        <th>Team 1 Elo</th>
-        <th>Team 2 Elo</th>
         <th>Team 1 Win %</th>
         <th>Team 2 Win %</th>
         <th>View Data</th>
@@ -46,11 +44,9 @@
         <td>{{ match[0] }}</td>
         <td>{{ match[1] }}</td>
         <td>{{ match[2] }}</td>
-        <td>{{ match[3] }}</td>
-        <td>{{ match[4] }}</td>
-        <td>{{ match[5] }}%</td>
-        <td>{{ match[6] }}%</td>
-        <td><a href="/match/{{ match[0] }}" target="_blank">View</a></td>
+        <td>{{ match[3] }}%</td>  <!-- 🔥 Now displays WIN PROBABILITY -->
+        <td>{{ match[4] }}%</td>  <!-- 🔥 Now displays WIN PROBABILITY -->
+        <td><a href="/match/{{ match[0] }}">View</a></td>
     </tr>
     {% endfor %}
 </table>

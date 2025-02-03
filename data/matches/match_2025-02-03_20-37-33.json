@@ -1,0 +1,97 @@
+[
+    {
+        "nickname": "EbinMake#EUNE",
+        "champion": "illaoi",
+        "rank": "Platinum 3 (52LP)",
+        "general_winrate": "46%",
+        "champion_winrate": "100%",
+        "kda": 4.2,
+        "gold_per_minute": "5.5\n2.0",
+        "damage_per_minute": "4.2:1\n8.0 / 5.0  / 13.0 (43%)"
+    },
+    {
+        "nickname": "MKai#M00N",
+        "champion": "diana",
+        "rank": "Platinum 3 (15LP)",
+        "general_winrate": "45%",
+        "champion_winrate": "67%",
+        "kda": 2.59,
+        "gold_per_minute": "5.4\n4.7",
+        "damage_per_minute": "2.59:1\n8.4 / 6.8  / 9.3 (63%)"
+    },
+    {
+        "nickname": "YoPhonLingin#dadad",
+        "champion": "ahri",
+        "rank": "Gold 2 (66LP)",
+        "general_winrate": "48%",
+        "gold_per_minute": "6.5\n4.0",
+        "damage_per_minute": "11:1\n5.0 / 1.0  / 6.0 (41%)"
+    },
+    {
+        "nickname": "\u039aitsune#EUNE",
+        "champion": "varus",
+        "rank": "Platinum 4 (93LP)",
+        "general_winrate": "50%",
+        "champion_winrate": "0%",
+        "kda": 3.14,
+        "gold_per_minute": "6.0\n4.0",
+        "damage_per_minute": "3.14:1\n10.0 / 7.0  / 12.0 (59%)"
+    },
+    {
+        "nickname": "Your Lvcifer#EUNE",
+        "champion": "milio",
+        "rank": "Platinum 3 (75LP)",
+        "general_winrate": "52%",
+        "champion_winrate": "67%",
+        "kda": 7.07,
+        "gold_per_minute": "6.3\n4.3",
+        "damage_per_minute": "7.07:1\n0.7 / 2.3  / 15.8 (62%)"
+    },
+    {
+        "nickname": "Emma732#EUNE",
+        "champion": "zyra",
+        "rank": "Platinum 4 (81LP)",
+        "general_winrate": "55%",
+        "champion_winrate": "60%",
+        "kda": 2.24,
+        "gold_per_minute": "4.6\n6.6",
+        "damage_per_minute": "2.24:1\n2.8 / 6.4  / 11.6 (42%)"
+    },
+    {
+        "nickname": "Blue#paco",
+        "champion": "sett",
+        "rank": "Platinum 3 (78LP)",
+        "general_winrate": "59%",
+        "gold_per_minute": "N/A",
+        "damage_per_minute": "N/A"
+    },
+    {
+        "nickname": "deisman#EUNE",
+        "champion": "katarina",
+        "rank": "Level 265",
+        "champion_winrate": "100%",
+        "kda": 15.0,
+        "gold_per_minute": "10.0\n1.0",
+        "damage_per_minute": "15:1\n19.0 / 2.0  / 11.0 (63%)"
+    },
+    {
+        "nickname": "Jhin is Ready#Bl\u00e0ck",
+        "champion": "caitlyn",
+        "rank": "Platinum 3 (46LP)",
+        "general_winrate": "47%",
+        "champion_winrate": "43%",
+        "kda": 1.77,
+        "gold_per_minute": "5.1\n5.7",
+        "damage_per_minute": "1.77:1\n10.2 / 9.2  / 6.0 (47%)"
+    },
+    {
+        "nickname": "Seboszy#1306",
+        "champion": "velkoz",
+        "rank": "Platinum 4 (99LP)",
+        "general_winrate": "58%",
+        "champion_winrate": "75%",
+        "kda": 2.7,
+        "gold_per_minute": "6.4\n3.3",
+        "damage_per_minute": "2.7:1\n9.8 / 7.1  / 9.5 (52%)"
+    }
+]

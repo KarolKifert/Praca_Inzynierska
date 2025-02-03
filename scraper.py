@@ -1,29 +1,48 @@
 import time
+import urllib
+
+import numpy as np
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 
+# ✅ Champion Name Fix Mapping for OP.GG discrepancies
+CHAMPION_NAME_FIXES = {
+    "MonkeyKing": "Wukong",
+    "FiddleSticks": "Fiddlesticks",
+    "ChoGath": "Cho'Gath",
+    "VelKoz": "Vel'Koz",
+    "KhaZix": "Kha'Zix",
+    "Nunu": "Nunu & Willump",
+    "JarvanIV": "Jarvan IV",
+    "RekSai": "Rek'Sai",
+    "DrMundo": "Dr. Mundo",
+}
+
+
+def setup_selenium_driver():
+    """Sets up Selenium WebDriver with proper options."""
+    options = Options()
+    options.add_argument("--headless")
+    options.add_argument("--no-sandbox")
+    options.add_argument("--disable-dev-shm-usage")
+    options.add_argument(
+        "user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.88 Safari/537.36"
+    )
+    return webdriver.Chrome(options=options)
+
 
 def scrape_players_and_champions(server, nickname):
     """Scrapes the live match page to get players and their general winrates + chosen champions."""
     url = f"https://www.op.gg/summoners/{server}/{nickname}/ingame"
-    chrome_options = Options()
-    chrome_options.add_argument("--headless")
-    chrome_options.add_argument("--no-sandbox")
-    chrome_options.add_argument("--disable-dev-shm-usage")
-    chrome_options.add_argument(
-        "user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.88 Safari/537.36"
-    )
-
-    driver = webdriver.Chrome(options=chrome_options)
+    driver = setup_selenium_driver()
     wait = WebDriverWait(driver, 30)
 
     try:
-        print(f"Accessing live match page for {nickname} on {server}...")
+        print(f"🔄 Accessing live match page for {nickname} on {server}...")
         driver.get(url)
-
         wait.until(EC.presence_of_all_elements_located((By.XPATH, '//td[@class="summoner-name"]/a')))
         print("✅ Player table loaded successfully.")
 
@@ -32,14 +51,20 @@ def scrape_players_and_champions(server, nickname):
         players_data = []
         champions_in_game = set()
 
-        for player_element in player_elements[:10]:
+        for player_element in player_elements[:10]:  # Limit to 10 players in match
             player_nickname = player_element.text.strip()
             print(f"🎯 Processing player: {player_nickname}")
 
             try:
                 champion_element = player_element.find_element(By.XPATH, '../../td[@class="champion-image"]/a')
                 champion_href = champion_element.get_attribute('href')
-                champion_name = champion_href.split('/')[-2].lower()
+                champion_name = champion_href.split('/')[-2]
+
+                # 🛠 Fix champion name if needed
+                if champion_name in CHAMPION_NAME_FIXES:
+                    print(f"🛠 Fixing champion name: {champion_name} -> {CHAMPION_NAME_FIXES[champion_name]}")
+                    champion_name = CHAMPION_NAME_FIXES[champion_name]
+
                 champions_in_game.add(champion_name)
             except Exception as e:
                 print(f"❌ Error retrieving champion for {player_nickname}: {e}")
@@ -60,7 +85,6 @@ def scrape_players_and_champions(server, nickname):
                 general_winrate = "N/A"
 
             try:
-                # Extract Champion-Specific Winrate (in-game winrate)
                 champ_winrate_element = player_element.find_element(By.XPATH, '../../td[@class="champion-info"]/div[@class="winratio"]')
                 champ_winrate = champ_winrate_element.text.strip()
             except Exception as e:
@@ -68,20 +92,13 @@ def scrape_players_and_champions(server, nickname):
                 champ_winrate = "N/A"
 
             try:
-                # Extract KDA (inside specific div class)
                 kda_element = player_element.find_element(By.XPATH, '../../td[@class="champion-info"]/div[contains(@class, "e1nt9gaq2")]')
-                kda = kda_element.text.strip()
-
-                # Remove unnecessary text like "KDA"
-                kda = kda.replace(" KDA", "").strip()
-
-                # Convert to float if valid, otherwise set to "N/A"
+                kda = kda_element.text.strip().replace(" KDA", "").strip()
                 kda = float(kda) if kda.replace(".", "").isdigit() else "N/A"
             except Exception as e:
                 print(f"❌ Error retrieving KDA for {player_nickname}: {e}")
                 kda = "N/A"
 
-            # Clean up player data and ensure "N/A" values are properly handled
             player_data = {
                 "nickname": player_nickname,
                 "champion": champion_name,
@@ -106,84 +123,82 @@ def scrape_players_and_champions(server, nickname):
         driver.quit()
 
 
-def scrape_champion_stats(server, full_nickname, champion):
-    """Scrapes the /champions page to get the player's Gold Per Minute and Damage Per Minute for the chosen champion."""
+def extract_numeric_value(text):
+    """Extracts and cleans numeric values from scraped text."""
+    try:
+        text = text.replace(",", ".").split("/")[0]  # Replace comma, remove '/m'
+        return float(''.join(filter(lambda x: x.isdigit() or x == ".", text)))
+    except Exception:
+        return None  # Return None if conversion fails
 
-    import urllib.parse
+def scrape_champion_stats(server, full_nickname, champion):
+    """Scrapes the /champions page to get Gold Per Minute and Damage Per Minute for the chosen champion.
+       If champion data is unavailable, retrieves stats from top 3 most played champions.
+    """
     formatted_nickname = urllib.parse.quote(full_nickname.replace("#", "-"))
     url = f"https://www.op.gg/summoners/{server}/{formatted_nickname}/champions"
 
-    chrome_options = Options()
-    chrome_options.add_argument("--headless")
-    chrome_options.add_argument("--no-sandbox")
-    chrome_options.add_argument("--disable-dev-shm-usage")
-    chrome_options.add_argument(
-        "user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.88 Safari/537.36"
-    )
-
-    driver = webdriver.Chrome(options=chrome_options)
+    driver = setup_selenium_driver()
     wait = WebDriverWait(driver, 30)
 
     try:
-        print(f"Accessing champion stats page for {full_nickname} on {server} (URL: {url})...")
+        print(f"🔄 Accessing champion stats page for {full_nickname} on {server} (URL: {url})...")
         driver.get(url)
         time.sleep(5)
 
         wait.until(EC.presence_of_all_elements_located((By.XPATH, '//a[contains(@href, "/champions/")]')))
-        print("Champion statistics page loaded successfully.")
+        print("✅ Champion statistics page loaded successfully.")
 
-        # **Normalize champion name for lookup**
-        normalized_champion = (
-            champion.lower()
-            .replace(" ", "")  # Remove spaces
-            .replace("'", "")  # Remove apostrophes
-            .replace("-", "")  # Remove hyphens
-        )
+        # ✅ Normalize champion name
+        normalized_champion = champion.lower().replace(" ", "").replace("'", "").replace("-", "")
 
-        # **Find all champions in the table**
+        # ✅ Get available champions
         champ_elements = driver.find_elements(By.XPATH, '//a[contains(@href, "/champions/") and contains(@href, "/build")]')
         available_champions = {
             el.text.strip().lower().replace(" ", "").replace("'", "").replace("-", ""): el
             for el in champ_elements if el.text.strip() != ""
         }
 
-        print(f"🔍 Available champions on page: {list(available_champions.keys())}")
-        print(f"🔍 Looking for champion: {normalized_champion}")
-
-        if normalized_champion not in available_champions:
-            print(f"❌ Champion {normalized_champion} not found in player's stats.")
-            return {"gold_per_minute": "N/A", "damage_per_minute": "N/A"}
-
-        # **Locate the champion row using direct text match**
-        try:
+        # ✅ If champion data is found, extract stats
+        if normalized_champion in available_champions:
             champ_element = available_champions[normalized_champion]
             champ_row = champ_element.find_element(By.XPATH, "./ancestor::tr")
-            print(f"✅ Found champion row for {champion}")
-        except Exception as e:
-            print(f"❌ Error finding champion row for {champion}: {e}")
-            return {"gold_per_minute": "N/A", "damage_per_minute": "N/A"}
 
-        # **Extract Gold Per Minute**
-        try:
-            gold_element = champ_row.find_elements(By.XPATH, './/td[contains(@class, "value")]/div')[1]
-            gold_per_minute = gold_element.text.strip().split("/m")[0]  # Remove "/m"
-        except Exception as e:
-            print(f"❌ Error retrieving Gold/min for {champion}: {e}")
-            gold_per_minute = "N/A"
+            damage_per_minute = extract_numeric_value(
+                champ_row.find_elements(By.XPATH, './/td[contains(@class, "value")]/div')[0].text
+            )
+            gold_per_minute = extract_numeric_value(
+                champ_row.find_elements(By.XPATH, './/td[contains(@class, "value")]/div')[3].text
+            )
 
-        # **Extract Damage Per Minute**
-        try:
-            dmg_element = champ_row.find_elements(By.XPATH, './/td[contains(@class, "value")]/div')[0]
-            damage_per_minute = dmg_element.text.strip().split("/m")[0]  # Remove "/m"
-        except Exception as e:
-            print(f"❌ Error retrieving Damage/min for {champion}: {e}")
-            damage_per_minute = "N/A"
+            return {
+                "gold_per_minute": gold_per_minute if gold_per_minute is not None else "N/A",
+                "damage_per_minute": damage_per_minute if damage_per_minute is not None else "N/A"
+            }
 
-        print(f"✅ Scraped stats for {champion}: GPM={gold_per_minute}, DPM={damage_per_minute}")
+        # ✅ If champion data is missing, retrieve stats from top 3 most played champions
+        print(f"❌ Champion {normalized_champion} not found, retrieving top 3 played champions...")
+        champ_elements_sorted = champ_elements[:3]  # Get top 3 most played champions
+        gold_values = []
+        damage_values = []
+
+        for champ in champ_elements_sorted:
+            champ_row = champ.find_element(By.XPATH, "./ancestor::tr")
+            dmg_value = extract_numeric_value(
+                champ_row.find_elements(By.XPATH, './/td[contains(@class, "value")]/div')[0].text
+            )
+            gold_value = extract_numeric_value(
+                champ_row.find_elements(By.XPATH, './/td[contains(@class, "value")]/div')[3].text
+            )
+
+            if dmg_value is not None:
+                damage_values.append(dmg_value)
+            if gold_value is not None:
+                gold_values.append(gold_value)
 
         return {
-            "gold_per_minute": gold_per_minute,
-            "damage_per_minute": damage_per_minute
+            "gold_per_minute": round(np.mean(gold_values), 2) if gold_values else "N/A",
+            "damage_per_minute": round(np.mean(damage_values), 2) if damage_values else "N/A"
         }
 
     except Exception as e:

@@ -1,7 +1,7 @@
 from flask import Flask, render_template, request, jsonify
-from scraper import scrape_players_and_champions
-from elo_calculator import calculate_match_probability, pop_means, pop_std
-from database import save_match, get_match_history
+from scraper import get_combined_player_data
+from database import save_match_data, get_match_history, get_match_data
+from elo_calculator import calculate_match_probability
 
 app = Flask(__name__)
 
@@ -11,26 +11,30 @@ def index():
         server = request.form["server"]
         nickname = request.form["nickname"]
 
-        # Scrape match data
-        players_data, _ = scrape_players_and_champions(server, nickname)
+        combined_data = get_combined_player_data(server, nickname)
 
-        if not players_data:
-            return render_template("index.html", message="Error: Could not fetch match data.")
+        if combined_data:
+            team1 = combined_data[:5]
+            team2 = combined_data[5:]
 
-        # Split into two teams (assuming first 5 players are team 1, next 5 are team 2)
-        team1, team2 = players_data[:5], players_data[5:]
+            match_probabilities = calculate_match_probability(team1, team2)
 
-        # Calculate match probability
-        match_probability = calculate_match_probability(team1, team2, pop_means, pop_std)
+            save_match_data(server, combined_data, match_probabilities)
 
-        # Save match data
-        match_id = save_match(players_data, match_probability)
+            message = "Match data successfully saved!"
+        else:
+            message = "Failed to retrieve match data."
 
-        return render_template("index.html", match_data=players_data, match_probability=match_probability, match_id=match_id)
+        return render_template("index.html", message=message, matches=get_match_history())
 
-    # Fetch match history
-    match_history = get_match_history()
-    return render_template("index.html", match_history=match_history)
+    return render_template("index.html", matches=get_match_history())
+
+@app.route("/match/<int:match_id>")
+def view_match(match_id):
+    match_data = get_match_data(match_id)
+    if match_data:
+        return jsonify(match_data)
+    return jsonify({"error": "Match not found!"})
 
 if __name__ == "__main__":
     app.run(debug=True)
