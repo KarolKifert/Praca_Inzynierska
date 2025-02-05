@@ -123,13 +123,20 @@ def scrape_players_and_champions(server, nickname):
         driver.quit()
 
 
-def extract_numeric_value(text):
-    """Extracts and cleans numeric values from scraped text."""
+def extract_numeric_value(element):
+    """Extracts and cleans numeric values from the SECOND div inside a td."""
     try:
-        text = text.replace(",", ".").split("/")[0]  # Replace comma, remove '/m'
-        return float(''.join(filter(lambda x: x.isdigit() or x == ".", text)))
-    except Exception:
-        return None  # Return None if conversion fails
+        divs = element.find_elements(By.TAG_NAME, "div")
+        if len(divs) > 1:
+            value_text = divs[-1].text.strip()  # Get the last <div>
+            value_text = value_text.replace(",", ".").replace("/m", "")  # Format correctly
+            return float(value_text)
+        return None  # Return None if no valid divs
+    except Exception as e:
+        print(f"❌ Error extracting numeric value: {e}")
+        return None
+
+
 
 def scrape_champion_stats(server, full_nickname, champion):
     """Scrapes the /champions page to get Gold Per Minute and Damage Per Minute for the chosen champion.
@@ -164,11 +171,12 @@ def scrape_champion_stats(server, full_nickname, champion):
             champ_element = available_champions[normalized_champion]
             champ_row = champ_element.find_element(By.XPATH, "./ancestor::tr")
 
+            # **FIX: Extract the FIRST numerical <td> for Damage Per Minute**
             damage_per_minute = extract_numeric_value(
-                champ_row.find_elements(By.XPATH, './/td[contains(@class, "value")]/div')[0].text
+                champ_row.find_elements(By.XPATH, './/td[contains(@class, "value")]')[4]  # First <td> for damage
             )
             gold_per_minute = extract_numeric_value(
-                champ_row.find_elements(By.XPATH, './/td[contains(@class, "value")]/div')[3].text
+                champ_row.find_elements(By.XPATH, './/td[contains(@class, "value")]')[6]  # **Second-to-last <td> for gold**
             )
 
             return {
@@ -185,10 +193,10 @@ def scrape_champion_stats(server, full_nickname, champion):
         for champ in champ_elements_sorted:
             champ_row = champ.find_element(By.XPATH, "./ancestor::tr")
             dmg_value = extract_numeric_value(
-                champ_row.find_elements(By.XPATH, './/td[contains(@class, "value")]/div')[0].text
+                champ_row.find_elements(By.XPATH, './/td[contains(@class, "value")]')[4]  # **First <td> for DPM**
             )
             gold_value = extract_numeric_value(
-                champ_row.find_elements(By.XPATH, './/td[contains(@class, "value")]/div')[3].text
+                champ_row.find_elements(By.XPATH, './/td[contains(@class, "value")]')[6]  # **Second-to-last <td> for GPM**
             )
 
             if dmg_value is not None:
@@ -211,7 +219,10 @@ def scrape_champion_stats(server, full_nickname, champion):
 
 
 
+
+
 def get_combined_player_data(server, nickname):
+    """Combines player data with champion statistics."""
     players_data, champions_in_game = scrape_players_and_champions(server, nickname)
 
     if not players_data or not champions_in_game:
@@ -230,7 +241,6 @@ def get_combined_player_data(server, nickname):
 
     print("✅ Final player data:", players_data)
     return players_data
-
 
 
 if __name__ == "__main__":

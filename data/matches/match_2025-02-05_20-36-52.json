@@ -1,0 +1,92 @@
+[
+    {
+        "nickname": "Wierzkac#EUNE",
+        "champion": "garen",
+        "rank": "Platinum 2 (60LP)",
+        "general_winrate": "55%",
+        "champion_winrate": "0%",
+        "kda": 1.33,
+        "gold_per_minute": 624.6,
+        "damage_per_minute": "N/A"
+    },
+    {
+        "nickname": "\u4eb2\u543b\u6211\u7684\u5f71\u5b50#Shade",
+        "champion": "graves",
+        "rank": "Emerald 4 (19LP)",
+        "general_winrate": "57%",
+        "champion_winrate": "58%",
+        "kda": 2.68,
+        "gold_per_minute": 723.2,
+        "damage_per_minute": "N/A"
+    },
+    {
+        "nickname": "Arifer#EUNE",
+        "champion": "mel",
+        "rank": "Emerald 3 (79LP)",
+        "general_winrate": "45%",
+        "gold_per_minute": 989.23,
+        "damage_per_minute": "N/A"
+    },
+    {
+        "nickname": "Kateris020#foxy",
+        "champion": "xayah",
+        "rank": "Diamond 4 (0LP)",
+        "general_winrate": "50%",
+        "champion_winrate": "50%",
+        "kda": 2.94,
+        "gold_per_minute": 665.4,
+        "damage_per_minute": "N/A"
+    },
+    {
+        "nickname": "Bambi91#EUNE",
+        "champion": "swain",
+        "rank": "Platinum 1 (51LP)",
+        "general_winrate": "38%",
+        "champion_winrate": "50%",
+        "kda": 3.44,
+        "gold_per_minute": 801.8,
+        "damage_per_minute": "N/A"
+    },
+    {
+        "nickname": "CEO OF WEEED#EUNE",
+        "champion": "shen",
+        "rank": "Emerald 4 (36LP)",
+        "general_winrate": "45%",
+        "champion_winrate": "100%",
+        "kda": 9.67,
+        "gold_per_minute": 674.9,
+        "damage_per_minute": "N/A"
+    },
+    {
+        "nickname": "Aedanemus#EUNE",
+        "champion": "nunu",
+        "rank": "Gold 2 (67LP)",
+        "general_winrate": "35%",
+        "gold_per_minute": "N/A",
+        "damage_per_minute": "N/A"
+    },
+    {
+        "nickname": "Mietaski#EUNE",
+        "champion": "vladimir",
+        "rank": "Diamond 4 (63LP)",
+        "general_winrate": "47%",
+        "gold_per_minute": 902.27,
+        "damage_per_minute": "N/A"
+    },
+    {
+        "nickname": "Bogdan Boneros#300",
+        "champion": "lucian",
+        "rank": "Emerald 1 (24LP)",
+        "general_winrate": "48%",
+        "gold_per_minute": 1019.83,
+        "damage_per_minute": "N/A"
+    },
+    {
+        "nickname": "Zaufaj mi#EUNE",
+        "champion": "milio",
+        "rank": "Emerald 4 (40LP)",
+        "general_winrate": "47%",
+        "gold_per_minute": 267.3,
+        "damage_per_minute": "N/A"
+    }
+]

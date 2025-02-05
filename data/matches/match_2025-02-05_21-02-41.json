@@ -1,0 +1,100 @@
+[
+    {
+        "nickname": "VanQsih#EUNE",
+        "champion": "tryndamere",
+        "rank": "Diamond 3 (80LP)",
+        "general_winrate": "67%",
+        "champion_winrate": "67%",
+        "kda": 2.04,
+        "gold_per_minute": 14402482.5,
+        "damage_per_minute": "N/A"
+    },
+    {
+        "nickname": "Olczak#Olu\u015b",
+        "champion": "jarvaniv",
+        "rank": "Diamond 2 (91LP)",
+        "general_winrate": "46%",
+        "champion_winrate": "33%",
+        "kda": 2.0,
+        "gold_per_minute": 8912346.6,
+        "damage_per_minute": 212.7
+    },
+    {
+        "nickname": "MXSTNXVLXS#EUNE",
+        "champion": "syndra",
+        "rank": "Master (66LP)",
+        "general_winrate": "50%",
+        "champion_winrate": "53%",
+        "kda": 2.78,
+        "gold_per_minute": 13527444.2,
+        "damage_per_minute": "N/A"
+    },
+    {
+        "nickname": "Gustaf22#EUNE",
+        "champion": "corki",
+        "rank": "Diamond 2 (66LP)",
+        "general_winrate": "45%",
+        "champion_winrate": "44%",
+        "kda": 2.75,
+        "gold_per_minute": 11425391.4,
+        "damage_per_minute": "N/A"
+    },
+    {
+        "nickname": "eepy kitten#eepyy",
+        "champion": "janna",
+        "rank": "Diamond 1 (26LP)",
+        "general_winrate": "55%",
+        "champion_winrate": "67%",
+        "kda": 3.15,
+        "gold_per_minute": 6754297.3,
+        "damage_per_minute": "N/A"
+    },
+    {
+        "nickname": "Mitsuki Miyawaki#MTSKI",
+        "champion": "gangplank",
+        "rank": "Diamond 1 (36LP)",
+        "general_winrate": "51%",
+        "champion_winrate": "47%",
+        "kda": 1.59,
+        "gold_per_minute": 11482400.0,
+        "damage_per_minute": "N/A"
+    },
+    {
+        "nickname": "Elemental Ace#EUNE",
+        "champion": "leesin",
+        "rank": "Diamond 1 (47LP)",
+        "general_winrate": "52%",
+        "champion_winrate": "0%",
+        "kda": 2.0,
+        "gold_per_minute": 10796455.8,
+        "damage_per_minute": 218.0
+    },
+    {
+        "nickname": "Domiluxun#EUNE",
+        "champion": "lux",
+        "rank": "Diamond 1 (69LP)",
+        "general_winrate": "51%",
+        "champion_winrate": "42%",
+        "kda": 2.9,
+        "gold_per_minute": 11751403.8,
+        "damage_per_minute": "N/A"
+    },
+    {
+        "nickname": "poffa#EUNE",
+        "champion": "ezreal",
+        "rank": "Master (41LP)",
+        "general_winrate": "47%",
+        "champion_winrate": "56%",
+        "kda": 3.19,
+        "gold_per_minute": 11973436.3,
+        "damage_per_minute": "N/A"
+    },
+    {
+        "nickname": "Milion IQ#EUNE",
+        "champion": "nami",
+        "rank": "Diamond 4 (85LP)",
+        "general_winrate": "50%",
+        "gold_per_minute": "N/A",
+        "damage_per_minute": "N/A"
+    }
+]
