@@ -1,0 +1,102 @@
+[
+    {
+        "nickname": "Artix von#12345",
+        "champion": "darius",
+        "rank": "Master (54LP)",
+        "general_winrate": "58%",
+        "champion_winrate": "71%",
+        "kda": 2.36,
+        "gold_per_minute": 429.7,
+        "damage_per_minute": "N/A"
+    },
+    {
+        "nickname": "Fenrir#GVS",
+        "champion": "shaco",
+        "rank": "Grandmaster (557LP)",
+        "general_winrate": "54%",
+        "champion_winrate": "56%",
+        "kda": 4.72,
+        "gold_per_minute": 417.4,
+        "damage_per_minute": "N/A"
+    },
+    {
+        "nickname": "G2 Bwipo#rview",
+        "champion": "jax",
+        "rank": "Master (468LP)",
+        "general_winrate": "56%",
+        "champion_winrate": "100%",
+        "kda": 1.75,
+        "gold_per_minute": 426.5,
+        "damage_per_minute": "N/A"
+    },
+    {
+        "nickname": "malhamsi10#messi",
+        "champion": "jhin",
+        "rank": "Master (411LP)",
+        "general_winrate": "55%",
+        "champion_winrate": "50%",
+        "kda": 3.08,
+        "gold_per_minute": 454.7,
+        "damage_per_minute": "N/A"
+    },
+    {
+        "nickname": "VRY#1010",
+        "champion": "leona",
+        "rank": "Grandmaster (539LP)",
+        "general_winrate": "54%",
+        "champion_winrate": "50%",
+        "kda": 1.86,
+        "gold_per_minute": 264.5,
+        "damage_per_minute": "N/A"
+    },
+    {
+        "nickname": "Focalor#EUW",
+        "champion": "yone",
+        "rank": "Master (431LP)",
+        "general_winrate": "61%",
+        "champion_winrate": "75%",
+        "kda": 1.37,
+        "gold_per_minute": 406.3,
+        "damage_per_minute": "N/A"
+    },
+    {
+        "nickname": "TTV BAASHH#EUW",
+        "champion": "xinzhao",
+        "rank": "Grandmaster (570LP)",
+        "general_winrate": "53%",
+        "champion_winrate": "60%",
+        "kda": 5.23,
+        "gold_per_minute": 413.8,
+        "damage_per_minute": "N/A"
+    },
+    {
+        "nickname": "GEN Chovy#tr34",
+        "champion": "ahri",
+        "rank": "Grandmaster (623LP)",
+        "general_winrate": "53%",
+        "champion_winrate": "83%",
+        "kda": 4.7,
+        "gold_per_minute": 421.7,
+        "damage_per_minute": "N/A"
+    },
+    {
+        "nickname": "Marcv1#LECHE",
+        "champion": "jinx",
+        "rank": "Master (369LP)",
+        "general_winrate": "52%",
+        "champion_winrate": "67%",
+        "kda": 2.61,
+        "gold_per_minute": 463.1,
+        "damage_per_minute": "N/A"
+    },
+    {
+        "nickname": "YCO#EUW",
+        "champion": "alistar",
+        "rank": "Master (3LP)",
+        "general_winrate": "60%",
+        "champion_winrate": "100%",
+        "kda": 5.67,
+        "gold_per_minute": 286.8,
+        "damage_per_minute": "N/A"
+    }
+]

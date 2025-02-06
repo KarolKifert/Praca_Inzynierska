@@ -99,13 +99,13 @@ def calculate_match_probability(team1, team2):
     team1_elo = np.mean([calculate_elo(player) for player in team1])
     team2_elo = np.mean([calculate_elo(player) for player in team2])
 
-    prob_team1 = expected_win_probability(team1_elo, team2_elo) * 100  # Convert to percentage
-    prob_team2 = (1 - expected_win_probability(team1_elo, team2_elo)) * 100  # Convert to percentage
+    prob_team1 = expected_win_probability(team1_elo, team2_elo) * 100  # ✅ Convert to percentage
+    prob_team2 = 100 - prob_team1  # ✅ Ensure percentages sum to 100
 
     return {
         "team1_elo": round(team1_elo, 2),
         "team2_elo": round(team2_elo, 2),
-        "team1_win_probability": round(prob_team1, 2),  # Ensure formatted properly
-        "team2_win_probability": round(prob_team2, 2)   # Ensure formatted properly
+        "team1_win_probability": round(prob_team1, 2),  # ✅ Ensure percentage format
+        "team2_win_probability": round(prob_team2, 2)
     }
 
