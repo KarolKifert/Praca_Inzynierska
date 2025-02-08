@@ -1,9 +1,9 @@
 from flask import Flask, render_template, request, jsonify
 from scraper import scrape_latest_matches, get_combined_player_data
 from database import save_match_data, get_match_history, get_match_data
-from elo_calculator import calculate_match_probability
 
 app = Flask(__name__)
+
 
 @app.route("/", methods=["GET"])
 def index():
@@ -25,15 +25,8 @@ def index():
             print(f"❌ Failed to retrieve data for {nickname} on {server}")
             continue  # Skip this match if no data found
 
-        # Split players into two teams
-        team1 = combined_data[:5]
-        team2 = combined_data[5:]
-
-        # Compute match probability
-        match_probabilities = calculate_match_probability(team1, team2)
-
-        # Save match to database
-        save_match_data(server, combined_data, match_probabilities)
+        # ✅ Save match data (probabilities now computed in database.py)
+        save_match_data(server, combined_data)
         print(f"✅ Match successfully saved for {nickname} on {server}")
 
     # Fetch the updated match history and display it

@@ -21,8 +21,12 @@
             <th>Match ID</th>
             <th>Timestamp</th>
             <th>Server</th>
-            <th>Team 1 Win %</th>
-            <th>Team 2 Win %</th>
+            <th>Team 1 Win % (Elo)</th>
+            <th>Team 2 Win % (Elo)</th>
+            <th>Team 1 Win % (Logistic Regression)</th>
+            <th>Team 2 Win % (Logistic Regression)</th>
+            <th>Team 1 Win % (Bayesian Elo)</th>
+            <th>Team 2 Win % (Bayesian Elo)</th>
             <th>View Data</th>
         </tr>
         {% for match in matches %}
@@ -30,8 +34,12 @@
             <td>{{ match[0] }}</td>
             <td>{{ match[1] }}</td>
             <td>{{ match[2] }}</td>
-            <td>{{ match[3] }}%</td>
+            <td>{{ match[3] }}%</td>  <!-- Elo-based probability -->
             <td>{{ match[4] }}%</td>
+            <td>{{ match[5] }}%</td>  <!-- Logistic Regression probability -->
+            <td>{{ match[6] }}%</td>
+            <td>{{ match[7] }}%</td>  <!-- Bayesian Elo probability -->
+            <td>{{ match[8] }}%</td>
             <td><a href="{{ url_for('view_match', match_id=match[0]) }}">View</a></td>
         </tr>
         {% endfor %}

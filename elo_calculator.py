@@ -1,5 +1,9 @@
+import sqlite3
 import numpy as np
 import re
+from sklearn.linear_model import LogisticRegression
+
+DB_PATH = "matches.db"
 
 # Weight distribution for probability calculation
 weights = {
@@ -42,6 +46,7 @@ pop_std = {
     'damage_per_minute': 200
 }
 
+
 def convert_rank_to_elo(rank_str):
     """Converts rank (e.g., 'Diamond 1 (45LP)') into an Elo score."""
     try:
@@ -60,6 +65,7 @@ def convert_rank_to_elo(rank_str):
         print(f"❌ Rank conversion error '{rank_str}': {e}")
         return 1500  # Default Elo fallback
 
+
 def clean_numeric_value(value):
     """Removes '/m', '%', and converts to float."""
     try:
@@ -69,6 +75,7 @@ def clean_numeric_value(value):
     except Exception as e:
         print(f"❌ Error cleaning value '{value}': {e}")
         return 0
+
 
 def calculate_elo(player_metrics, base_elo=1500, scaling=100):
     """Computes a player's Elo based on weighted attributes."""
@@ -90,9 +97,11 @@ def calculate_elo(player_metrics, base_elo=1500, scaling=100):
 
     return base_elo + composite * scaling
 
+
 def expected_win_probability(elo_team1, elo_team2):
     """Computes probability of Team 1 winning against Team 2."""
     return 1 / (1 + 10 ** ((elo_team2 - elo_team1) / 400))
+
 
 def calculate_match_probability(team1, team2):
     """Computes probability of winning for each team based on Elo scores."""
@@ -107,5 +116,83 @@ def calculate_match_probability(team1, team2):
         "team2_elo": round(team2_elo, 2),
         "team1_win_probability": round(prob_team1, 2),  # ✅ Ensure percentage format
         "team2_win_probability": round(prob_team2, 2)
+    }
+
+
+def calculate_bayesian_elo_probability(team1, team2):
+    """Computes probability using Bayesian Elo method."""
+
+    # Convert ranks to Elo values
+    team1_elos = [convert_rank_to_elo(player.get("rank", "Unranked")) for player in team1]
+    team2_elos = [convert_rank_to_elo(player.get("rank", "Unranked")) for player in team2]
+
+    # Compute mean and variance
+    mean_team1 = np.mean(team1_elos)
+    mean_team2 = np.mean(team2_elos)
+
+    var_team1 = np.var(team1_elos) + 100  # Adding uncertainty
+    var_team2 = np.var(team2_elos) + 100
+
+    # Compute probability using Bayesian inference
+    prob_team1 = 1 / (1 + np.exp(-(mean_team1 - mean_team2) / np.sqrt(var_team1 + var_team2)))
+
+    return {
+        "team1_win_probability": round(prob_team1 * 100, 2),
+        "team2_win_probability": round((1 - prob_team1) * 100, 2)
+    }
+
+
+def train_logistic_model():
+    """Train a logistic regression model using past match data."""
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        SELECT team1_win_probability, team2_win_probability, team1_win_probability_bayes, actual_winner
+        FROM matches
+        WHERE actual_winner IS NOT NULL
+    """)
+
+    data = cursor.fetchall()
+    conn.close()
+
+    if not data:
+        return None  # No training data available
+
+    X = np.array([[match[0], match[1], match[2]] for match in data])  # Features: Elo, Bayesian Elo
+    y = np.array([match[3] for match in data])  # Target: actual winner (0 or 1)
+
+    model = LogisticRegression()
+    model.fit(X, y)
+    return model
+
+
+# ✅ Initialize to None (DO NOT TRAIN AT IMPORT TIME)
+logistic_model = None
+
+
+def calculate_logistic_regression_probability(team1, team2):
+    """Predicts match probability using logistic regression model."""
+    global logistic_model
+
+    # ✅ Train model only when first used
+    if logistic_model is None:
+        logistic_model = train_logistic_model()
+
+    if logistic_model is None:
+        return {"team1_win_probability": 50, "team2_win_probability": 50}  # Default if no model
+
+    match_prob_elo = calculate_match_probability(team1, team2)
+    match_prob_bayes = calculate_bayesian_elo_probability(team1, team2)
+
+    X_new = np.array([[match_prob_elo["team1_win_probability"],
+                       match_prob_elo["team2_win_probability"],
+                       match_prob_bayes["team1_win_probability"]]])
+
+    prediction = logistic_model.predict_proba(X_new)[0]
+
+    return {
+        "team1_win_probability": round(prediction[1] * 100, 2),  # Probability of Team 1 winning
+        "team2_win_probability": round(prediction[0] * 100, 2)
     }
 

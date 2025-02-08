@@ -3,6 +3,9 @@ import sqlite3
 import json
 from datetime import datetime
 
+from elo_calculator import calculate_match_probability, calculate_bayesian_elo_probability, \
+    calculate_logistic_regression_probability
+
 DB_PATH = "matches.db"
 
 
@@ -49,6 +52,16 @@ def init_db():
         )
     """)
 
+    # Check if new columns exist, add them if not
+    try:
+        cursor.execute("ALTER TABLE matches ADD COLUMN team1_win_probability_lr REAL;")
+        cursor.execute("ALTER TABLE matches ADD COLUMN team2_win_probability_lr REAL;")
+        cursor.execute("ALTER TABLE matches ADD COLUMN team1_win_probability_bayes REAL;")
+        cursor.execute("ALTER TABLE matches ADD COLUMN team2_win_probability_bayes REAL;")
+        conn.commit()
+    except sqlite3.OperationalError:
+        pass  # Columns already exist
+
     conn.commit()
     conn.close()
     print("✅ Database initialized successfully!")
@@ -58,7 +71,7 @@ def init_db():
 init_db()
 
 
-def save_match_data(server, players_data, match_probabilities):
+def save_match_data(server, players_data):
     """Stores a match and associated player data into the database and JSON file."""
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
@@ -67,17 +80,34 @@ def save_match_data(server, players_data, match_probabilities):
     timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
     json_filename = f"data/matches/match_{timestamp}.json"
 
+    # ✅ Split players into teams
+    team1 = players_data[:5]
+    team2 = players_data[5:]
+
+    # ✅ Compute match probabilities (NOW DONE IN DATABASE.PY)
+    match_prob_elo = calculate_match_probability(team1, team2)
+    match_prob_lr = calculate_logistic_regression_probability(team1, team2)
+    match_prob_bayes = calculate_bayesian_elo_probability(team1, team2)
+
     # ✅ Insert match into the database
     cursor.execute("""
-        INSERT INTO matches (timestamp, server, team1_win_probability, team2_win_probability, json_file_path)
-        VALUES (?, ?, ?, ?, ?)
-    """, (timestamp, server, match_probabilities["team1_win_probability"], match_probabilities["team2_win_probability"],
+        INSERT INTO matches (
+            timestamp, server, 
+            team1_win_probability, team2_win_probability,
+            team1_win_probability_lr, team2_win_probability_lr,
+            team1_win_probability_bayes, team2_win_probability_bayes,
+            json_file_path
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    """, (timestamp, server,
+          match_prob_elo["team1_win_probability"], match_prob_elo["team2_win_probability"],
+          match_prob_lr["team1_win_probability"], match_prob_lr["team2_win_probability"],
+          match_prob_bayes["team1_win_probability"], match_prob_bayes["team2_win_probability"],
           json_filename))
 
     match_id = cursor.lastrowid
 
-    # ✅ Save match data as JSON file
-    os.makedirs(os.path.dirname(json_filename), exist_ok=True)  # Ensure directory exists
+    # ✅ Ensure directory exists and save match data as JSON file
+    os.makedirs(os.path.dirname(json_filename), exist_ok=True)
     with open(json_filename, "w", encoding="utf-8") as f:
         json.dump(players_data, f, indent=4)
 
@@ -120,9 +150,11 @@ def get_match_history():
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
 
-    # ✅ Retrieve match history
     cursor.execute("""
-        SELECT match_id, timestamp, server, team1_win_probability, team2_win_probability
+        SELECT match_id, timestamp, server, 
+               team1_win_probability, team2_win_probability,
+               team1_win_probability_lr, team2_win_probability_lr,
+               team1_win_probability_bayes, team2_win_probability_bayes
         FROM matches
         ORDER BY timestamp DESC
     """)
