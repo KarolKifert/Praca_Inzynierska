@@ -1,10 +1,14 @@
 import os
 import sqlite3
 import json
+import time
 from datetime import datetime
+
+from selenium.webdriver.common.by import By
 
 from elo_calculator import calculate_match_probability, calculate_bayesian_elo_probability, \
     calculate_logistic_regression_probability
+from scraper import setup_selenium_driver
 
 DB_PATH = "matches.db"
 
@@ -26,123 +30,85 @@ def init_db():
         )
     """)
 
-    # ✅ Create players table
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS players (
-            player_id INTEGER PRIMARY KEY AUTOINCREMENT,
-            nickname TEXT NOT NULL UNIQUE,
-            server TEXT NOT NULL,
-            rank TEXT
-        )
-    """)
-
-    # ✅ Create match-player relation table
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS match_player_data (
-            match_id INTEGER NOT NULL,
-            player_id INTEGER NOT NULL,
-            champion TEXT NOT NULL,
-            general_winrate TEXT,
-            champion_winrate TEXT,
-            kda TEXT,
-            gold_per_minute TEXT,
-            damage_per_minute TEXT,
-            FOREIGN KEY (match_id) REFERENCES matches(match_id),
-            FOREIGN KEY (player_id) REFERENCES players(player_id)
-        )
-    """)
-
-    # Check if new columns exist, add them if not
+    # ✅ Ensure probability columns exist
     try:
         cursor.execute("ALTER TABLE matches ADD COLUMN team1_win_probability_lr REAL;")
         cursor.execute("ALTER TABLE matches ADD COLUMN team2_win_probability_lr REAL;")
         cursor.execute("ALTER TABLE matches ADD COLUMN team1_win_probability_bayes REAL;")
         cursor.execute("ALTER TABLE matches ADD COLUMN team2_win_probability_bayes REAL;")
+        cursor.execute("ALTER TABLE matches ADD COLUMN actual_winner INTEGER DEFAULT NULL;")  # ✅ Add actual_winner
         conn.commit()
     except sqlite3.OperationalError:
         pass  # Columns already exist
 
-    conn.commit()
+    # ✅ Create table to track pending match results
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS pending_results (
+            match_id INTEGER PRIMARY KEY,
+            server TEXT NOT NULL,
+            nickname TEXT NOT NULL,
+            timestamp TEXT NOT NULL,
+            FOREIGN KEY (match_id) REFERENCES matches(match_id)
+        )
+    """)
+
+    # ✅ Ensure `actual_winner` column exists
+    try:
+        cursor.execute("ALTER TABLE matches ADD COLUMN actual_winner INTEGER DEFAULT NULL;")
+        conn.commit()
+        print("✅ Added `actual_winner` column to `matches` table.")
+    except sqlite3.OperationalError:
+        print("✅ `actual_winner` column already exists.")
+
     conn.close()
     print("✅ Database initialized successfully!")
 
 
-# Call the function to initialize the database when script runs
+# ✅ Call at script start
 init_db()
 
 
 def save_match_data(server, players_data):
-    """Stores a match and associated player data into the database and JSON file."""
+    """Stores a match and tracks it for result checking later."""
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
 
-    # ✅ Generate a timestamp and filename for JSON storage
     timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
     json_filename = f"data/matches/match_{timestamp}.json"
 
-    # ✅ Split players into teams
     team1 = players_data[:5]
     team2 = players_data[5:]
 
-    # ✅ Compute match probabilities (NOW DONE IN DATABASE.PY)
+    # ✅ Compute match probabilities
     match_prob_elo = calculate_match_probability(team1, team2)
     match_prob_lr = calculate_logistic_regression_probability(team1, team2)
     match_prob_bayes = calculate_bayesian_elo_probability(team1, team2)
 
-    # ✅ Insert match into the database
+    # ✅ Insert match into the database (10 values for 10 columns)
     cursor.execute("""
         INSERT INTO matches (
             timestamp, server, 
             team1_win_probability, team2_win_probability,
             team1_win_probability_lr, team2_win_probability_lr,
             team1_win_probability_bayes, team2_win_probability_bayes,
-            json_file_path
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            json_file_path, actual_winner
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL)
     """, (timestamp, server,
           match_prob_elo["team1_win_probability"], match_prob_elo["team2_win_probability"],
           match_prob_lr["team1_win_probability"], match_prob_lr["team2_win_probability"],
           match_prob_bayes["team1_win_probability"], match_prob_bayes["team2_win_probability"],
-          json_filename))
+          json_filename))  # ✅ Added `json_filename` as the 9th value
 
     match_id = cursor.lastrowid
 
-    # ✅ Ensure directory exists and save match data as JSON file
-    os.makedirs(os.path.dirname(json_filename), exist_ok=True)
-    with open(json_filename, "w", encoding="utf-8") as f:
-        json.dump(players_data, f, indent=4)
-
-    # ✅ Ensure players are saved properly
-    for player in players_data:
-        nickname = player.get("nickname", "Unknown")
-        champion = player.get("champion", "Unknown")
-        rank = player.get("rank", "Unranked")
-        general_winrate = player.get("general_winrate", "N/A")
-        champion_winrate = player.get("champion_winrate", "N/A")
-        kda = player.get("kda", "N/A")
-        gold_per_minute = player.get("gold_per_minute", "N/A")
-        damage_per_minute = player.get("damage_per_minute", "N/A")
-
-        # ✅ Ensure player exists in database
-        cursor.execute("SELECT player_id FROM players WHERE nickname = ?", (nickname,))
-        result = cursor.fetchone()
-
-        if result:
-            player_id = result[0]
-        else:
-            cursor.execute("INSERT INTO players (nickname, server, rank) VALUES (?, ?, ?)",
-                           (nickname, server, rank))
-            player_id = cursor.lastrowid
-
-        # ✅ Insert match-player data
-        cursor.execute("""
-            INSERT INTO match_player_data 
-            (match_id, player_id, champion, general_winrate, champion_winrate, kda, gold_per_minute, damage_per_minute)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        """, (match_id, player_id, champion, general_winrate, champion_winrate, kda, gold_per_minute, damage_per_minute))
+    # ✅ Store live match for later checking
+    cursor.execute("""
+        INSERT INTO pending_results (match_id, server, nickname, timestamp)
+        VALUES (?, ?, ?, ?)
+    """, (match_id, server, players_data[0]["nickname"], timestamp))
 
     conn.commit()
     conn.close()
-    print(f"✅ Match saved successfully! JSON stored at {json_filename}")
 
 
 def get_match_history():
@@ -183,3 +149,51 @@ def get_match_data(match_id):
                 return match_data  # Returns detailed match data from JSON file
 
     return None  # If no data found
+
+
+def check_pending_results():
+    """Periodically checks if pending matches have ended and updates the winner."""
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+
+    cursor.execute("SELECT match_id, server, nickname FROM pending_results")
+    pending_matches = cursor.fetchall()
+
+    if not pending_matches:
+        print("✅ No matches need checking.")
+        conn.close()
+        return
+
+    for match_id, server, nickname in pending_matches:
+        print(f"🔍 Checking match result for {nickname} on {server}...")
+
+        match_result = get_match_result(server, nickname)
+        if match_result is not None:
+            print(f"✅ Match {match_id} completed! Updating winner.")
+
+            cursor.execute("UPDATE matches SET actual_winner = ? WHERE match_id = ?", (match_result, match_id))
+            cursor.execute("DELETE FROM pending_results WHERE match_id = ?", (match_id,))
+
+    conn.commit()
+    conn.close()
+
+
+def get_match_result(server, nickname):
+    """Scrapes OP.GG to find out who won the match."""
+    url = f"https://www.op.gg/summoners/{server}/{nickname}"
+    driver = setup_selenium_driver()
+
+    try:
+        print(f"🔄 Checking match history for {nickname} on {server}...")
+        driver.get(url)
+        time.sleep(5)
+
+        match_result = driver.find_element(By.XPATH, '//div[contains(@class, "GameResult")]').text.strip()
+        return 1 if "Victory" in match_result else 0  # ✅ 1 = Team 1 win, 0 = Team 2 win
+
+    except Exception as e:
+        print(f"❌ Error checking match result: {e}")
+        return None
+
+    finally:
+        driver.quit()

@@ -143,12 +143,13 @@ def calculate_bayesian_elo_probability(team1, team2):
 
 
 def train_logistic_model():
-    """Train a logistic regression model using past match data."""
+    """Train a logistic regression model using available match data."""
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
 
     cursor.execute("""
-        SELECT team1_win_probability, team2_win_probability, team1_win_probability_bayes, actual_winner
+        SELECT team1_win_probability, team2_win_probability, 
+               team1_win_probability_bayes, actual_winner
         FROM matches
         WHERE actual_winner IS NOT NULL
     """)
@@ -157,30 +158,38 @@ def train_logistic_model():
     conn.close()
 
     if not data:
-        return None  # No training data available
+        return None  # No training data
 
-    X = np.array([[match[0], match[1], match[2]] for match in data])  # Features: Elo, Bayesian Elo
-    y = np.array([match[3] for match in data])  # Target: actual winner (0 or 1)
+    # ✅ Convert to NumPy array and filter out NaN values
+    data = np.array(data, dtype=np.float64)
+    data = data[~np.isnan(data).any(axis=1)]  # ✅ Remove rows that contain NaN
+
+    if data.shape[0] == 0:
+        print("❌ No valid training data after removing NaN values!")
+        return None
+
+    X = data[:, :-1]  # Features (probabilities)
+    y = data[:, -1]   # Labels (actual winners)
 
     model = LogisticRegression()
     model.fit(X, y)
+    print(f"✅ Logistic Regression model trained with {len(X)} matches.")
     return model
 
 
-# ✅ Initialize to None (DO NOT TRAIN AT IMPORT TIME)
-logistic_model = None
+# ✅ Ensure we re-train model only if needed
+logistic_model = train_logistic_model()
 
 
 def calculate_logistic_regression_probability(team1, team2):
-    """Predicts match probability using logistic regression model."""
+    """Predicts match probability using logistic regression."""
     global logistic_model
 
-    # ✅ Train model only when first used
     if logistic_model is None:
         logistic_model = train_logistic_model()
 
     if logistic_model is None:
-        return {"team1_win_probability": 50, "team2_win_probability": 50}  # Default if no model
+        return {"team1_win_probability": 50, "team2_win_probability": 50}
 
     match_prob_elo = calculate_match_probability(team1, team2)
     match_prob_bayes = calculate_bayesian_elo_probability(team1, team2)
@@ -189,10 +198,13 @@ def calculate_logistic_regression_probability(team1, team2):
                        match_prob_elo["team2_win_probability"],
                        match_prob_bayes["team1_win_probability"]]])
 
+    X_new = np.nan_to_num(X_new, nan=50)  # ✅ Replace NaN values with neutral probability
+
     prediction = logistic_model.predict_proba(X_new)[0]
 
     return {
-        "team1_win_probability": round(prediction[1] * 100, 2),  # Probability of Team 1 winning
+        "team1_win_probability": round(prediction[1] * 100, 2),
         "team2_win_probability": round(prediction[0] * 100, 2)
     }
+
 
