@@ -6,8 +6,8 @@ from datetime import datetime
 
 from selenium.webdriver.common.by import By
 
-from elo_calculator import calculate_match_probability, calculate_bayesian_elo_probability, \
-    calculate_logistic_regression_probability
+from elo_calculator import calculate_bayesian_elo_probability, \
+    calculate_logistic_regression_probability, calculate_weighted_elo_probability
 from scraper import setup_selenium_driver
 
 DB_PATH = "matches.db"
@@ -26,50 +26,35 @@ def init_db():
             server TEXT NOT NULL,
             team1_win_probability REAL NOT NULL,
             team2_win_probability REAL NOT NULL,
+            team1_win_probability_bayes REAL,
+            team2_win_probability_bayes REAL,
+            team1_win_probability_lr REAL,
+            team2_win_probability_lr REAL,
             json_file_path TEXT NOT NULL
         )
     """)
 
-    # ✅ Ensure probability columns exist
-    try:
-        cursor.execute("ALTER TABLE matches ADD COLUMN team1_win_probability_lr REAL;")
-        cursor.execute("ALTER TABLE matches ADD COLUMN team2_win_probability_lr REAL;")
-        cursor.execute("ALTER TABLE matches ADD COLUMN team1_win_probability_bayes REAL;")
-        cursor.execute("ALTER TABLE matches ADD COLUMN team2_win_probability_bayes REAL;")
-        cursor.execute("ALTER TABLE matches ADD COLUMN actual_winner INTEGER DEFAULT NULL;")  # ✅ Add actual_winner
-        conn.commit()
-    except sqlite3.OperationalError:
-        pass  # Columns already exist
-
-    # ✅ Create table to track pending match results
+    # ✅ Create players table
     cursor.execute("""
-        CREATE TABLE IF NOT EXISTS pending_results (
-            match_id INTEGER PRIMARY KEY,
-            server TEXT NOT NULL,
+        CREATE TABLE IF NOT EXISTS players (
+            player_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            match_id INTEGER NOT NULL,
             nickname TEXT NOT NULL,
-            timestamp TEXT NOT NULL,
+            rank TEXT NOT NULL,
+            win_rate REAL,
+            kda REAL,
+            gold_per_minute REAL,
+            damage_per_minute REAL,
             FOREIGN KEY (match_id) REFERENCES matches(match_id)
         )
     """)
 
-    # ✅ Ensure `actual_winner` column exists
-    try:
-        cursor.execute("ALTER TABLE matches ADD COLUMN actual_winner INTEGER DEFAULT NULL;")
-        conn.commit()
-        print("✅ Added `actual_winner` column to `matches` table.")
-    except sqlite3.OperationalError:
-        print("✅ `actual_winner` column already exists.")
-
+    conn.commit()
     conn.close()
-    print("✅ Database initialized successfully!")
-
-
-# ✅ Call at script start
-init_db()
 
 
 def save_match_data(server, players_data):
-    """Stores a match and tracks it for result checking later."""
+    """Stores match details and associated player stats in the database."""
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
 
@@ -79,33 +64,57 @@ def save_match_data(server, players_data):
     team1 = players_data[:5]
     team2 = players_data[5:]
 
-    # ✅ Compute match probabilities
-    match_prob_elo = calculate_match_probability(team1, team2)
-    match_prob_lr = calculate_logistic_regression_probability(team1, team2)
+    # ✅ Compute probabilities
+    match_prob_elo = calculate_weighted_elo_probability(team1, team2)
     match_prob_bayes = calculate_bayesian_elo_probability(team1, team2)
+    match_prob_lr = calculate_logistic_regression_probability(team1, team2)
 
-    # ✅ Insert match into the database (10 values for 10 columns)
+    # ✅ Insert match into the database
     cursor.execute("""
         INSERT INTO matches (
             timestamp, server, 
             team1_win_probability, team2_win_probability,
-            team1_win_probability_lr, team2_win_probability_lr,
             team1_win_probability_bayes, team2_win_probability_bayes,
-            json_file_path, actual_winner
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL)
+            team1_win_probability_lr, team2_win_probability_lr,
+            json_file_path
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     """, (timestamp, server,
           match_prob_elo["team1_win_probability"], match_prob_elo["team2_win_probability"],
-          match_prob_lr["team1_win_probability"], match_prob_lr["team2_win_probability"],
           match_prob_bayes["team1_win_probability"], match_prob_bayes["team2_win_probability"],
-          json_filename))  # ✅ Added `json_filename` as the 9th value
+          match_prob_lr["team1_win_probability"], match_prob_lr["team2_win_probability"],
+          json_filename))
 
     match_id = cursor.lastrowid
 
-    # ✅ Store live match for later checking
-    cursor.execute("""
-        INSERT INTO pending_results (match_id, server, nickname, timestamp)
-        VALUES (?, ?, ?, ?)
-    """, (match_id, server, players_data[0]["nickname"], timestamp))
+    # ✅ Insert player data
+    # ✅ Ensure players are saved properly
+    for player in players_data:
+        nickname = player.get("nickname", "Unknown")
+        champion = player.get("champion", "Unknown")
+        rank = player.get("rank", "Unranked")
+        general_winrate = player.get("general_winrate", "N/A")
+        champion_winrate = player.get("champion_winrate", "N/A")
+        kda = player.get("kda", "N/A")
+        gold_per_minute = player.get("gold_per_minute", "N/A")
+        damage_per_minute = player.get("damage_per_minute", "N/A")
+
+        # ✅ Ensure player exists in database
+        cursor.execute("SELECT player_id FROM players WHERE nickname = ?", (nickname,))
+        result = cursor.fetchone()
+
+        if result:
+            player_id = result[0]
+        else:
+            cursor.execute("INSERT INTO players (nickname, server, rank) VALUES (?, ?, ?)", (nickname, server, rank))
+            player_id = cursor.lastrowid
+
+        # ✅ Insert match-player data with match_id!
+        cursor.execute("""
+            INSERT INTO match_player_data 
+            (match_id, player_id, champion, general_winrate, champion_winrate, kda, gold_per_minute, damage_per_minute)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        """, (
+            match_id, player_id, champion, general_winrate, champion_winrate, kda, gold_per_minute, damage_per_minute))
 
     conn.commit()
     conn.close()

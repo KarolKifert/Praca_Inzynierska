@@ -169,15 +169,21 @@ def scrape_players_and_champions(server, nickname):
 
 
 def extract_numeric_value(element):
-    """Extracts only the first numeric value from a <td> containing multiple <div> elements."""
+    """Extracts the first numeric value from the first div inside td."""
     try:
-        divs = element.find_elements(By.TAG_NAME, "div")  # ✅ Get all <div> elements inside <td>
-        value_text = divs[0].text.strip()  # ✅ Take only the first <div>
-        value_text = re.sub(r"[^\d.]", "", value_text)  # ✅ Remove non-numeric characters
-        return float(value_text)
+        divs = element.find_elements(By.TAG_NAME, "div")  # ✅ Get all divs inside td
+        if divs:
+            value_text = divs[0].text.strip().split("\n")[0]  # ✅ Only take the first value before \n
+            value_text = value_text.replace(" ", "").replace(",", ".").replace("/m", "").replace("%", "")  # ✅ Clean formatting
+            return float(value_text)  # ✅ Convert to float now that we have a clean value
+        return 0.0  # ⬅️ Return 0.0 if no divs found
     except Exception as e:
         print(f"❌ Error extracting numeric value: {e}")
-        return None  # ✅ Should never happen, but safety check
+        return 0.0  # ⬅️ Return 0.0 instead of crashing
+
+
+
+
 def scrape_champion_stats(server, full_nickname, champion):
     """Scrapes champion performance stats, ensuring only the first <div> in each td is used."""
     formatted_nickname = urllib.parse.quote(full_nickname.replace("#", "-"))
@@ -207,7 +213,7 @@ def scrape_champion_stats(server, full_nickname, champion):
 
             # ✅ Extract only the FIRST <div> inside each <td>
             damage_per_minute = extract_numeric_value(
-                champ_row.find_elements(By.XPATH, './/td[contains(@class, "value")]')[4]  # ✅ First DPM value
+                champ_row.find_elements(By.XPATH, './/td[contains(@class, "value")]')[3]  # ✅ First DPM value
             )
             gold_per_minute = extract_numeric_value(
                 champ_row.find_elements(By.XPATH, './/td[contains(@class, "value")]')[6]  # ✅ First GPM value
@@ -226,7 +232,7 @@ def scrape_champion_stats(server, full_nickname, champion):
         for champ in champ_elements_sorted:
             champ_row = champ.find_element(By.XPATH, "./ancestor::tr")
             dmg_value = extract_numeric_value(
-                champ_row.find_elements(By.XPATH, './/td[contains(@class, "value")]')[4]  # ✅ First DPM value
+                champ_row.find_elements(By.XPATH, './/td[contains(@class, "value")]')[3]  # ✅ First DPM value
             )
             gold_value = extract_numeric_value(
                 champ_row.find_elements(By.XPATH, './/td[contains(@class, "value")]')[6]  # ✅ First GPM value

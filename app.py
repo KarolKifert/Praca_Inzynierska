@@ -1,11 +1,13 @@
 import time
+
 from flask import Flask, render_template, jsonify
 from scraper import scrape_latest_matches, get_combined_player_data
-from database import save_match_data, get_match_history, get_match_data
-import threading
-from match_checker import start_background_checker
+from database import save_match_data, get_match_history, get_match_data, init_db
+
 
 app = Flask(__name__)
+
+init_db()
 
 
 @app.route("/", methods=["GET"])
@@ -41,9 +43,9 @@ def view_match(match_id):
     match_data = get_match_data(match_id)
     return jsonify(match_data if match_data else {"error": "Match not found!"})
 
-
-# ✅ Start background result checker (runs every 30 minutes)
-threading.Thread(target=start_background_checker, daemon=True).start()
-
 if __name__ == "__main__":
-    app.run(debug=True)
+    try:
+        init_db()  # Ensure database initializes
+        app.run(debug=True)
+    except Exception as e:
+        print(f"❌ ERROR STARTING APP: {e}")
