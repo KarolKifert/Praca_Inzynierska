@@ -6,8 +6,7 @@ from datetime import datetime
 
 from selenium.webdriver.common.by import By
 
-from elo_calculator import calculate_bayesian_elo_probability, \
-    calculate_logistic_regression_probability, calculate_weighted_elo_probability
+from elo_calculator import calculate_bayesian_elo_probability, calculate_match_probabilities
 from scraper import setup_selenium_driver
 
 DB_PATH = "matches.db"
@@ -54,7 +53,7 @@ def init_db():
 
 
 def save_match_data(server, players_data):
-    """Stores match details and associated player stats in the database."""
+    """Stores a match and associates players with it."""
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
 
@@ -64,30 +63,35 @@ def save_match_data(server, players_data):
     team1 = players_data[:5]
     team2 = players_data[5:]
 
-    # ✅ Compute probabilities
-    match_prob_elo = calculate_weighted_elo_probability(team1, team2)
-    match_prob_bayes = calculate_bayesian_elo_probability(team1, team2)
-    match_prob_lr = calculate_logistic_regression_probability(team1, team2)
-
-    # ✅ Insert match into the database
+    # ✅ First, insert a match placeholder to generate match_id
     cursor.execute("""
         INSERT INTO matches (
             timestamp, server, 
             team1_win_probability, team2_win_probability,
             team1_win_probability_bayes, team2_win_probability_bayes,
-            team1_win_probability_lr, team2_win_probability_lr,
             json_file_path
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-    """, (timestamp, server,
-          match_prob_elo["team1_win_probability"], match_prob_elo["team2_win_probability"],
+        ) VALUES (?, ?, NULL, NULL, NULL, NULL, ?)
+    """, (timestamp, server, json_filename))
+
+    match_id = cursor.lastrowid  # ✅ Retrieve newly created match ID
+    print(f"✅ Match saved with ID: {match_id}")
+
+    # ✅ Compute match probabilities *AFTER* match_id is created
+    match_prob_elo = calculate_match_probabilities(team1, team2, match_id)
+    match_prob_bayes = calculate_bayesian_elo_probability(team1, team2)
+
+    # ✅ Now update the match with calculated probabilities
+    cursor.execute("""
+        UPDATE matches 
+        SET 
+            team1_win_probability = ?, team2_win_probability = ?, 
+            team1_win_probability_bayes = ?, team2_win_probability_bayes = ?
+        WHERE match_id = ?
+    """, (match_prob_elo["team1_win_probability"], match_prob_elo["team2_win_probability"],
           match_prob_bayes["team1_win_probability"], match_prob_bayes["team2_win_probability"],
-          match_prob_lr["team1_win_probability"], match_prob_lr["team2_win_probability"],
-          json_filename))
+          match_id))
 
-    match_id = cursor.lastrowid
-
-    # ✅ Insert player data
-    # ✅ Ensure players are saved properly
+    # ✅ Store match-player data correctly linked to match_id
     for player in players_data:
         nickname = player.get("nickname", "Unknown")
         champion = player.get("champion", "Unknown")
@@ -98,26 +102,31 @@ def save_match_data(server, players_data):
         gold_per_minute = player.get("gold_per_minute", "N/A")
         damage_per_minute = player.get("damage_per_minute", "N/A")
 
-        # ✅ Ensure player exists in database
+        # ✅ Ensure player exists
         cursor.execute("SELECT player_id FROM players WHERE nickname = ?", (nickname,))
         result = cursor.fetchone()
 
         if result:
             player_id = result[0]
         else:
-            cursor.execute("INSERT INTO players (nickname, server, rank) VALUES (?, ?, ?)", (nickname, server, rank))
+            cursor.execute("INSERT INTO players (nickname, server, rank) VALUES (?, ?, ?)",
+                           (nickname, server, rank))
             player_id = cursor.lastrowid
 
-        # ✅ Insert match-player data with match_id!
+        # ✅ Link the player to the match with match_id
         cursor.execute("""
-            INSERT INTO match_player_data 
-            (match_id, player_id, champion, general_winrate, champion_winrate, kda, gold_per_minute, damage_per_minute)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        """, (
-            match_id, player_id, champion, general_winrate, champion_winrate, kda, gold_per_minute, damage_per_minute))
+            INSERT INTO match_player_data (
+                match_id, player_id, champion, general_winrate, champion_winrate, kda, gold_per_minute, damage_per_minute
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        """, (match_id, player_id, champion, general_winrate, champion_winrate, kda, gold_per_minute, damage_per_minute))
 
     conn.commit()
     conn.close()
+    print(f"✅ Match data fully stored with linked players!")
+
+
+
+
 
 
 def get_match_history():
@@ -141,11 +150,11 @@ def get_match_history():
 
 
 def get_match_data(match_id):
-    """Retrieves detailed match data from the stored JSON file in the database."""
+    """Retrieves detailed match data from a stored JSON file."""
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
 
-    # ✅ Get the JSON file path for the match
+    # ✅ Ensure we fetch the correct JSON file path from matches.db
     cursor.execute("SELECT json_file_path FROM matches WHERE match_id = ?", (match_id,))
     result = cursor.fetchone()
     conn.close()
@@ -155,9 +164,11 @@ def get_match_data(match_id):
         if os.path.exists(json_file):
             with open(json_file, "r", encoding="utf-8") as f:
                 match_data = json.load(f)
-                return match_data  # Returns detailed match data from JSON file
+                return match_data  # ✅ Returns JSON data to the web interface
 
-    return None  # If no data found
+    return None  # ❌ If file not found, "Match not found" error appears
+
+
 
 
 def check_pending_results():

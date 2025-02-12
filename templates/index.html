@@ -8,12 +8,8 @@
 <body>
     <h1>League of Legends Match Prediction</h1>
 
-    <!-- ✅ Automatically fetches live game, no need for manual input -->
-    <h2>Fetching live game data...</h2>
-
-    {% if message %}
-        <p>{{ message }}</p>
-    {% endif %}
+    <button onclick="startScraping()">Start Scraping</button>
+    <p id="status"></p>
 
     <h2>Previous Matches</h2>
     <table border="1">
@@ -34,15 +30,26 @@
             <td>{{ match[0] }}</td>
             <td>{{ match[1] }}</td>
             <td>{{ match[2] }}</td>
-            <td>{{ match[3] }}%</td>  <!-- Elo-based probability -->
+            <td>{{ match[3] }}%</td>
             <td>{{ match[4] }}%</td>
-            <td>{{ match[5] }}%</td>  <!-- Logistic Regression probability -->
+            <td>{{ match[5] }}%</td>
             <td>{{ match[6] }}%</td>
-            <td>{{ match[7] }}%</td>  <!-- Bayesian Elo probability -->
+            <td>{{ match[7] }}%</td>
             <td>{{ match[8] }}%</td>
             <td><a href="{{ url_for('view_match', match_id=match[0]) }}">View</a></td>
         </tr>
         {% endfor %}
     </table>
+
+    <script>
+        function startScraping() {
+            fetch("/start_scraping", { method: "POST" })
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById("status").innerText = data.status;
+                })
+                .catch(error => console.error("Error:", error));
+        }
+    </script>
 </body>
 </html>
