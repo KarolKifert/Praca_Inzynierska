@@ -123,7 +123,6 @@ def calculate_match_probabilities(team1, team2, match_id):
         SET 
             team1_win_probability = ?, team2_win_probability = ?, 
             team1_win_probability_bayes = ?, team2_win_probability_bayes = ?, 
-            team1_win_probability_lr = ?, team2_win_probability_lr = ?
         WHERE match_id = ?
     """, (match_prob_elo["team1_win_probability"], match_prob_elo["team2_win_probability"],
           match_prob_bayes["team1_win_probability"], match_prob_bayes["team2_win_probability"],

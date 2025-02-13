@@ -81,15 +81,18 @@ def save_match_data(server, players_data):
     match_prob_bayes = calculate_bayesian_elo_probability(team1, team2)
 
     # ✅ Now update the match with calculated probabilities
+    # Correct SQL statement
     cursor.execute("""
         UPDATE matches 
         SET 
             team1_win_probability = ?, team2_win_probability = ?, 
             team1_win_probability_bayes = ?, team2_win_probability_bayes = ?
         WHERE match_id = ?
-    """, (match_prob_elo["team1_win_probability"], match_prob_elo["team2_win_probability"],
-          match_prob_bayes["team1_win_probability"], match_prob_bayes["team2_win_probability"],
-          match_id))
+    """, (
+        match_prob_elo["team1_win_probability"], match_prob_elo["team2_win_probability"],
+        match_prob_bayes["team1_win_probability"], match_prob_bayes["team2_win_probability"],
+        match_id
+    ))
 
     # ✅ Store match-player data correctly linked to match_id
     for player in players_data:
@@ -125,10 +128,6 @@ def save_match_data(server, players_data):
     print(f"✅ Match data fully stored with linked players!")
 
 
-
-
-
-
 def get_match_history():
     """Retrieves all stored matches from the database for displaying in the web interface."""
     conn = sqlite3.connect(DB_PATH)
@@ -137,7 +136,6 @@ def get_match_history():
     cursor.execute("""
         SELECT match_id, timestamp, server, 
                team1_win_probability, team2_win_probability,
-               team1_win_probability_lr, team2_win_probability_lr,
                team1_win_probability_bayes, team2_win_probability_bayes
         FROM matches
         ORDER BY timestamp DESC
@@ -167,8 +165,6 @@ def get_match_data(match_id):
                 return match_data  # ✅ Returns JSON data to the web interface
 
     return None  # ❌ If file not found, "Match not found" error appears
-
-
 
 
 def check_pending_results():

@@ -122,11 +122,17 @@ def scrape_players_and_champions(server, nickname):
                 print(f"❌ Error retrieving rank for {player_nickname}: {e}")
                 rank = "Unranked"
 
-            players_data.append({
+            # Placeholder for KDA and winrate (potentially missing here)
+            player_data = {
                 "nickname": player_nickname,
                 "champion": champion_name,
-                "rank": rank  # ✅ Adding rank to player data
-            })
+                "rank": rank,
+                "champion_winrate": "N/A",
+                "kda": "N/A"
+            }
+
+            # If KDA or champion winrate are missing, they'll be fetched later in scrape_champion_stats
+            players_data.append(player_data)
 
         return players_data, champions_in_game
 
@@ -136,6 +142,7 @@ def scrape_players_and_champions(server, nickname):
 
     finally:
         driver.quit()
+
 
 
 def extract_numeric_value(element):
@@ -177,6 +184,7 @@ def scrape_champion_stats(server, full_nickname, champion):
         }
 
         champ_winrate, champ_kda = "N/A", "N/A"
+        gold, damage_per_minute = "N/A", "N/A"
 
         if normalized_champion in available_champions:
             champ_element = available_champions[normalized_champion]
@@ -199,9 +207,9 @@ def scrape_champion_stats(server, full_nickname, champion):
             except:
                 champ_kda = "N/A"
 
-        if champ_winrate == "N/A" or champ_kda == "N/A":
-            print(f"❌ Champion {champion} not found, retrieving top 3 played champions...")
-
+        # Fallback: If any value is still missing, scrape from top 3 most played champions
+        if champ_winrate == "N/A" or champ_kda == "N/A" or gold == "N/A" or damage_per_minute == "N/A":
+            print(f"⚠️ Missing data for {champion}. Scraping top 3 most played champions instead.")
             champ_elements_sorted = champ_elements[:3]
             winrates, kdas, gold_values, damage_values = [], [], [], []
 
@@ -217,7 +225,8 @@ def scrape_champion_stats(server, full_nickname, champion):
 
                 try:
                     wr = champ_row.find_element(By.XPATH, './/div[@class="winratio-graph"]/following-sibling::span').text.strip()
-                    winrates.append(float(wr.replace("%", "")))
+                    if wr != "N/A":
+                        winrates.append(float(wr.replace("%", "")))
                 except:
                     pass
 
@@ -234,22 +243,31 @@ def scrape_champion_stats(server, full_nickname, champion):
                 if gold_value is not None:
                     gold_values.append(gold_value)
 
-            champ_winrate = f"{round(np.mean(winrates), 2)}%" if winrates else "N/A"
-            champ_kda = round(np.mean(kdas), 2) if kdas else "N/A"
+            # Compute means only if data exists; otherwise, assign defaults
+            champ_winrate = f"{round(np.mean(winrates), 2)}%" if winrates else "50%"
+            champ_kda = round(np.mean(kdas), 2) if kdas else 2.5
+            gold = round(np.mean(gold_values), 2) if gold_values else 500
+            damage_per_minute = round(np.mean(damage_values), 2) if damage_values else 500
+
+        # Ensure KDA formatting is correct (remove trailing ':1' if present)
+        if isinstance(champ_kda, str) and ":" in champ_kda:
+            champ_kda = float(champ_kda.split(":")[0])
 
         return {
-            "gold_per_minute": gold if gold is not None else "N/A",
-            "damage_per_minute": damage_per_minute if damage_per_minute is not None else "N/A",
+            "gold_per_minute": gold if gold is not None else 0.0,
+            "damage_per_minute": damage_per_minute if damage_per_minute is not None else 0.0,
             "champion_winrate": champ_winrate,
             "kda": champ_kda
         }
 
     except Exception as e:
         print(f"❌ Error retrieving champion stats: {e}")
-        return {"gold_per_minute": "N/A", "damage_per_minute": "N/A", "champion_winrate": "N/A", "kda": "N/A"}
+        return {"gold_per_minute": 0.0, "damage_per_minute": 0.0, "champion_winrate": "N/A", "kda": 2.5}
 
     finally:
         driver.quit()
+
+
 
 
 def get_combined_player_data(server, nickname):
