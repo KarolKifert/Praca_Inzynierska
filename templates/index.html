@@ -3,53 +3,36 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>League Match Predictor</title>
+    <title>Match History</title>
 </head>
 <body>
-    <h1>League of Legends Match Prediction</h1>
-
-    <button onclick="startScraping()">Start Scraping</button>
-    <p id="status"></p>
-
-    <h2>Previous Matches</h2>
+    <h1>League of Legends Match History</h1>
+    <form action="{{ url_for('start_scraping') }}" method="post">
+        <button type="submit">Start Scraper</button>
+    </form>
     <table border="1">
         <tr>
             <th>Match ID</th>
             <th>Timestamp</th>
             <th>Server</th>
-            <th>Team 1 Win % (Elo)</th>
-            <th>Team 2 Win % (Elo)</th>
-            <th>Team 1 Win % (Logistic Regression)</th>
-            <th>Team 2 Win % (Logistic Regression)</th>
-            <th>Team 1 Win % (Bayesian Elo)</th>
-            <th>Team 2 Win % (Bayesian Elo)</th>
-            <th>View Data</th>
+            <th>Team 1 Win % (Weighted)</th>
+            <th>Team 2 Win % (Weighted)</th>
+            <th>Team 1 Win % (Bayesian)</th>
+            <th>Team 2 Win % (Bayesian)</th>
+            <th>View Details</th>
         </tr>
         {% for match in matches %}
         <tr>
             <td>{{ match[0] }}</td>
             <td>{{ match[1] }}</td>
             <td>{{ match[2] }}</td>
-            <td>{{ match[3] }}%</td>
-            <td>{{ match[4] }}%</td>
-            <td>{{ match[5] }}%</td>
-            <td>{{ match[6] }}%</td>
-            <td>{{ match[7] }}%</td>
-            <td>{{ match[8] }}%</td>
+            <td>{{ match[3] }}</td>
+            <td>{{ match[4] }}</td>
+            <td>{{ match[5] }}</td>
+            <td>{{ match[6] }}</td>
             <td><a href="{{ url_for('view_match', match_id=match[0]) }}">View</a></td>
         </tr>
         {% endfor %}
     </table>
-
-    <script>
-        function startScraping() {
-            fetch("/start_scraping", { method: "POST" })
-                .then(response => response.json())
-                .then(data => {
-                    document.getElementById("status").innerText = data.status;
-                })
-                .catch(error => console.error("Error:", error));
-        }
-    </script>
 </body>
 </html>

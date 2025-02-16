@@ -1,6 +1,5 @@
 import numpy as np
 import re
-from sklearn.linear_model import LogisticRegression
 import sqlite3
 
 DB_PATH = "matches.db"
@@ -99,34 +98,52 @@ def calculate_bayesian_elo_probability(team1, team2):
     }
 
 
-### **8. Compute & Save Probabilities for a Match**
-def calculate_match_probabilities(team1, team2, match_id):
-    """Computes and saves three probability methods for a match."""
+def fetch_player_data(match_id):
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT nickname, rank, win_rate, kda, gold_per_minute, damage_per_minute
+        FROM players p
+        JOIN match_player_data mpd ON p.player_id = mpd.player_id
+        WHERE mpd.match_id = ?
+    """, (match_id,))
+    players = cursor.fetchall()
+    conn.close()
+
+    player_list = []
+    for p in players:
+        player_list.append({
+            "nickname": p[0],
+            "rank": p[1],
+            "win_rate": p[2],
+            "kda": p[3],
+            "gold_per_minute": p[4],
+            "damage_per_minute": p[5]
+        })
+    return player_list
+
+
+# Modify calculate_match_probabilities to fetch data from the database
+def calculate_match_probabilities(match_id, conn):
+    players = fetch_player_data(match_id)
+    team1 = players[:5]
+    team2 = players[5:]
 
     match_prob_elo = calculate_weighted_elo_probability(team1, team2)
     match_prob_bayes = calculate_bayesian_elo_probability(team1, team2)
 
-    # ✅ Ensure no None values
-    for key in match_prob_elo:
-        if match_prob_elo[key] is None:
-            match_prob_elo[key] = 50.0  # Neutral 50% probability
-
-    for key in match_prob_bayes:
-        if match_prob_bayes[key] is None:
-            match_prob_bayes[key] = 50.0
-
-    # ✅ Save probabilities in the database
-    conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute("""
         UPDATE matches 
-        SET 
-            team1_win_probability = ?, team2_win_probability = ?, 
-            team1_win_probability_bayes = ?, team2_win_probability_bayes = ?, 
+        SET team1_win_probability = ?, team2_win_probability = ?,
+            team1_win_probability_bayes = ?, team2_win_probability_bayes = ?
         WHERE match_id = ?
     """, (match_prob_elo["team1_win_probability"], match_prob_elo["team2_win_probability"],
           match_prob_bayes["team1_win_probability"], match_prob_bayes["team2_win_probability"],
           match_id))
-
     conn.commit()
-    conn.close()
+
+    return {
+        "team1_win_probability": match_prob_elo["team1_win_probability"],
+        "team2_win_probability": match_prob_elo["team2_win_probability"]
+    }

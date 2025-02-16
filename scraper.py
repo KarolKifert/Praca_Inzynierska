@@ -23,52 +23,35 @@ CHAMPION_NAME_FIXES = {
 
 
 def setup_selenium_driver():
-    """Sets up Selenium WebDriver with proper options."""
     options = Options()
     options.add_argument("--headless")
     options.add_argument("--no-sandbox")
     options.add_argument("--disable-dev-shm-usage")
-    options.add_argument(
-        "user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.88 Safari/537.36"
-    )
     return webdriver.Chrome(options=options)
 
 
 def scrape_latest_matches():
-    """Scrapes the latest 5 live matches from Porofessor."""
+    """Scrapes the first live match from Porofessor."""
     url = "https://porofessor.gg/pl/"
     driver = setup_selenium_driver()
     wait = WebDriverWait(driver, 30)
 
     try:
-        print(f"🔄 Accessing Porofessor live matches page...")
         driver.get(url)
-        wait.until(EC.presence_of_all_elements_located(
-            (By.XPATH, '//ul[@class="cards-list no-margin-top no-margin-bottom"]/li')))
+        wait.until(EC.presence_of_element_located((By.XPATH, '//ul[@class="cards-list no-margin-top no-margin-bottom"]/li')))
 
-        match_elements = driver.find_elements(By.XPATH, '//ul[@class="cards-list no-margin-top no-margin-bottom"]/li')
+        match_element = driver.find_element(By.XPATH, '//ul[@class="cards-list no-margin-top no-margin-bottom"]/li[1]')
+        link_element = match_element.find_element(By.XPATH, './/a[contains(@class, "liveGameLink")]')
+        match_href = link_element.get_attribute("href")
 
-        matches_data = []
-        for match in match_elements[:5]:  # ✅ Process only the first 5 matches
-            try:
-                link_element = match.find_element(By.XPATH, './/a[contains(@class, "liveGameLink")]')
-                match_href = link_element.get_attribute("href")  # Example: "/pl/live/euw/Qnoxs-17165"
+        match_parts = match_href.split("/")[-2:]
+        server = match_parts[0]
+        nickname, hashtag = match_parts[1].rsplit("-", 1)
 
-                # ✅ Extracting `server`, `nickname`, and `hashtag`
-                match_parts = match_href.split("/")[-2:]  # Extract last two elements: ["euw", "Qnoxs-17165"]
-                server = match_parts[0]  # "euw"
-                nickname, hashtag = match_parts[1].rsplit("-", 1)  # "Qnoxs", "17165"
-
-                print(f"✅ Scraped match: Server={server}, Nickname={nickname}, Hashtag={hashtag}")
-                matches_data.append((server, f"{nickname}-{hashtag}"))
-
-            except Exception as e:
-                print(f"❌ Error extracting match details: {e}")
-
-        return matches_data
+        return [(server, f"{nickname}-{hashtag}")]
 
     except Exception as e:
-        print(f"❌ Error scraping matches: {e}")
+        print(f"❌ Error scraping match: {e}")
         return []
 
     finally:
@@ -151,13 +134,12 @@ def extract_numeric_value(element):
         divs = element.find_elements(By.TAG_NAME, "div")  # ✅ Get all divs inside td
         if divs:
             value_text = divs[0].text.strip().split("\n")[0]  # ✅ Only take the first value before \n
-            value_text = value_text.replace(" ", "").replace(",", ".").replace("/m", "").replace("%", "")  # ✅ Clean formatting
+            value_text = value_text.replace(" ", "").replace(",", ".").replace("/m", "").replace("%", "")
             return float(value_text)  # ✅ Convert to float now that we have a clean value
         return 0.0  # ⬅️ Return 0.0 if no divs found
     except Exception as e:
         print(f"❌ Error extracting numeric value: {e}")
         return 0.0  # ⬅️ Return 0.0 instead of crashing
-
 
 
 def scrape_champion_stats(server, full_nickname, champion):
@@ -262,12 +244,10 @@ def scrape_champion_stats(server, full_nickname, champion):
 
     except Exception as e:
         print(f"❌ Error retrieving champion stats: {e}")
-        return {"gold_per_minute": 0.0, "damage_per_minute": 0.0, "champion_winrate": "N/A", "kda": 2.5}
+        return {"gold_per_minute": 0.0, "damage_per_minute": 0.0, "champion_winrate": 0.0, "kda": 0.0}
 
     finally:
         driver.quit()
-
-
 
 
 def get_combined_player_data(server, nickname):

@@ -1,0 +1,30 @@
+<html>
+<head>
+    <title>Match Details</title>
+</head>
+<body>
+    <h2>Match Details</h2>
+    <table border="1">
+        <tr>
+            <th>Nickname</th>
+            <th>Rank</th>
+            <th>Win Rate</th>
+            <th>KDA</th>
+            <th>Gold/Minute</th>
+            <th>Damage/Minute</th>
+            <th>Champion</th>
+        </tr>
+        {% for player in players %}
+        <tr>
+            <td>{{ player[0] }}</td>
+            <td>{{ player[1] }}</td>
+            <td>{{ player[2] }}%</td>
+            <td>{{ player[3] }}</td>
+            <td>{{ player[4] }}</td>
+            <td>{{ player[5] }}</td>
+            <td>{{ player[6] }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+</body>
+</html>
