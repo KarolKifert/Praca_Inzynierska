@@ -24,7 +24,7 @@ CHAMPION_NAME_FIXES = {
 
 def setup_selenium_driver():
     options = Options()
-    options.add_argument("--headless")
+    #options.add_argument("--headless")
     options.add_argument("--no-sandbox")
     options.add_argument("--disable-dev-shm-usage")
     return webdriver.Chrome(options=options)
@@ -38,7 +38,8 @@ def scrape_latest_matches():
 
     try:
         driver.get(url)
-        wait.until(EC.presence_of_element_located((By.XPATH, '//ul[@class="cards-list no-margin-top no-margin-bottom"]/li')))
+        wait.until(
+            EC.presence_of_element_located((By.XPATH, '//ul[@class="cards-list no-margin-top no-margin-bottom"]/li')))
 
         match_element = driver.find_element(By.XPATH, '//ul[@class="cards-list no-margin-top no-margin-bottom"]/li[1]')
         link_element = match_element.find_element(By.XPATH, './/a[contains(@class, "liveGameLink")]')
@@ -127,7 +128,6 @@ def scrape_players_and_champions(server, nickname):
         driver.quit()
 
 
-
 def extract_numeric_value(element):
     """Extracts the first numeric value from the first div inside td."""
     try:
@@ -159,7 +159,8 @@ def scrape_champion_stats(server, full_nickname, champion):
 
         normalized_champion = champion.lower().replace(" ", "").replace("'", "").replace("-", "")
 
-        champ_elements = driver.find_elements(By.XPATH, '//a[contains(@href, "/champions/") and contains(@href, "/build")]')
+        champ_elements = driver.find_elements(By.XPATH,
+                                              '//a[contains(@href, "/champions/") and contains(@href, "/build")]')
         available_champions = {
             el.text.strip().lower().replace(" ", "").replace("'", "").replace("-", ""): el
             for el in champ_elements if el.text.strip() != ""
@@ -180,13 +181,17 @@ def scrape_champion_stats(server, full_nickname, champion):
             )
 
             try:
-                champ_winrate = champ_row.find_element(By.XPATH, './/div[@class="winratio-graph"]/following-sibling::span').text.strip()
+                champ_winrate = champ_row.find_element(By.XPATH,
+                                                       './/div[@class="winratio-graph"]/following-sibling::span').text.strip()
             except:
                 champ_winrate = "N/A"
 
             try:
-                champ_kda = champ_row.find_element(By.XPATH, './/strong[contains(@class, "e5ndxls1")]').text.strip()
-            except:
+                champ_kda_element = champ_row.find_element(By.XPATH, './/strong[contains(@class, "ej6kayl1")]')
+                champ_kda = champ_kda_element.text.strip()
+                print(f"✅ Extracted KDA: {champ_kda}")  # 🛠 DEBUG: Check extracted KDA
+            except Exception as e:
+                print(f"❌ Error extracting KDA: {e}")
                 champ_kda = "N/A"
 
         # Fallback: If any value is still missing, scrape from top 3 most played champions
@@ -206,14 +211,15 @@ def scrape_champion_stats(server, full_nickname, champion):
                 )
 
                 try:
-                    wr = champ_row.find_element(By.XPATH, './/div[@class="winratio-graph"]/following-sibling::span').text.strip()
+                    wr = champ_row.find_element(By.XPATH,
+                                                './/div[@class="winratio-graph"]/following-sibling::span').text.strip()
                     if wr != "N/A":
                         winrates.append(float(wr.replace("%", "")))
                 except:
                     pass
 
                 try:
-                    kda_text = champ_row.find_element(By.XPATH, './/strong[contains(@class, "e5ndxls1")]').text.strip()
+                    kda_text = champ_row.find_element(By.XPATH, './/strong[contains(@class, "ej6kayl1")]').text.strip()
                     kda_value = float(kda_text.split(":")[0]) if ":" in kda_text else None
                     if kda_value:
                         kdas.append(kda_value)
@@ -271,7 +277,6 @@ def get_combined_player_data(server, nickname):
 
     print(f"✅ Player data fetched: {final_players_data}")
     return final_players_data
-
 
 
 if __name__ == "__main__":

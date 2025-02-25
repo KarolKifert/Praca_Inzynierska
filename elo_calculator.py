@@ -28,6 +28,12 @@ pop_std = {'win_rate': 10, 'rank_elo': 300, 'kda': 1.0, 'gold_per_minute': 100, 
 ### **1. Rank-to-Elo Conversion**
 def convert_rank_to_elo(rank_str):
     """Converts a player's rank into an Elo score."""
+    rank_values = {
+        "Iron": 1000, "Bronze": 1200, "Silver": 1400, "Gold": 1600,
+        "Platinum": 1800, "Emerald": 2000, "Diamond": 2200,
+        "Master": 2500, "Grandmaster": 2700, "Challenger": 3000
+    }
+    import re
     match = re.match(r"(\w+) (\d) \((\d+)LP\)", rank_str)
     if not match:
         return 1500  # Default for unranked
@@ -81,11 +87,38 @@ def calculate_weighted_elo_probability(team1, team2):
     }
 
 
-### **5. Bayesian Elo Probability Calculation**
+def convert_to_elo(value, metric):
+    """Converts a player metric (win rate, KDA, etc.) to an Elo-like score using Z-score normalization."""
+    if value is None:
+        value = pop_means[metric]  # Default to population mean if missing
+    value = float(value)
+    z_score = (value - pop_means[metric]) / pop_std[metric]  # Compute Z-score
+    return 1500 + (z_score * 100)  # Convert to Elo-like scale
+
+
+def calculate_player_bayesian_elo(player):
+    """Calculates a player's Bayesian Elo using multiple performance metrics."""
+    rank_elo = convert_rank_to_elo(player.get("rank", "Unranked"))
+    win_rate_elo = convert_to_elo(player.get("win_rate", 50), "win_rate")
+    kda_elo = convert_to_elo(player.get("kda", 2.5), "kda")
+    gold_elo = convert_to_elo(player.get("gold_per_minute", 400), "gold_per_minute")
+    damage_elo = convert_to_elo(player.get("damage_per_minute", 500), "damage_per_minute")
+
+    # Weighted sum of all metrics
+    combined_elo = (
+        (rank_elo * weights["rank_elo"]) +
+        (win_rate_elo * weights["win_rate"]) +
+        (kda_elo * weights["kda"]) +
+        (gold_elo * weights["gold_per_minute"]) +
+        (damage_elo * weights["damage_per_minute"])
+    )
+    return combined_elo
+
+
 def calculate_bayesian_elo_probability(team1, team2):
-    """Computes Bayesian probability for a match."""
-    team1_elos = [convert_rank_to_elo(player.get("rank", "Unranked")) for player in team1]
-    team2_elos = [convert_rank_to_elo(player.get("rank", "Unranked")) for player in team2]
+    """Computes Bayesian probability for a match based on all available player statistics."""
+    team1_elos = [calculate_player_bayesian_elo(player) for player in team1]
+    team2_elos = [calculate_player_bayesian_elo(player) for player in team2]
 
     mean_team1, mean_team2 = np.mean(team1_elos), np.mean(team2_elos)
     var_team1, var_team2 = np.var(team1_elos) + 100, np.var(team2_elos) + 100
@@ -125,10 +158,16 @@ def fetch_player_data(match_id):
 
 # Modify calculate_match_probabilities to fetch data from the database
 def calculate_match_probabilities(match_id, conn):
+    """Fetches match data, computes probabilities, and updates the database."""
     players = fetch_player_data(match_id)
-    team1 = players[:5]
-    team2 = players[5:]
 
+    if len(players) < 10:
+        print(f"⚠️ Warning: Not enough player data for match {match_id}. Skipping probability calculation.")
+        return {"team1_win_probability": None, "team2_win_probability": None}
+
+    team1, team2 = players[:5], players[5:]
+
+    # Compute weighted Elo and Bayesian probabilities
     match_prob_elo = calculate_weighted_elo_probability(team1, team2)
     match_prob_bayes = calculate_bayesian_elo_probability(team1, team2)
 
@@ -142,6 +181,8 @@ def calculate_match_probabilities(match_id, conn):
           match_prob_bayes["team1_win_probability"], match_prob_bayes["team2_win_probability"],
           match_id))
     conn.commit()
+
+    print(f"✅ Updated probabilities for match {match_id}")
 
     return {
         "team1_win_probability": match_prob_elo["team1_win_probability"],

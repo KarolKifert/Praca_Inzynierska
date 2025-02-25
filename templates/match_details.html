@@ -1,10 +1,27 @@
 <html>
 <head>
     <title>Match Details</title>
+    <style>
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            border: 1px solid black;
+            padding: 8px;
+            text-align: center;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+        .high { color: green; font-weight: bold; }
+        .medium { color: orange; font-weight: bold; }
+        .low { color: red; font-weight: bold; }
+    </style>
 </head>
 <body>
     <h2>Match Details</h2>
-    <table border="1">
+    <table>
         <tr>
             <th>Nickname</th>
             <th>Rank</th>
@@ -18,10 +35,18 @@
         <tr>
             <td>{{ player[0] }}</td>
             <td>{{ player[1] }}</td>
-            <td>{{ player[2] }}%</td>
-            <td>{{ player[3] }}</td>
-            <td>{{ player[4] }}</td>
-            <td>{{ player[5] }}</td>
+            <td class="{% if player[2]|float >= 60 %}high{% elif player[2]|float >= 50 %}medium{% else %}low{% endif %}">
+                {{ player[2] }}
+            </td>
+            <td class="{% if player[3]|float >= 3.0 %}high{% elif player[3]|float >= 2.0 %}medium{% else %}low{% endif %}">
+                {{ player[3] }}
+            </td>
+            <td class="{% if player[4]|float >= 450 %}high{% elif player[4]|float >= 350 %}medium{% else %}low{% endif %}">
+                {{ player[4] }}
+            </td>
+            <td class="{% if player[5]|float >= 600 %}high{% elif player[5]|float >= 400 %}medium{% else %}low{% endif %}">
+                {{ player[5] }}
+            </td>
             <td>{{ player[6] }}</td>
         </tr>
         {% endfor %}
