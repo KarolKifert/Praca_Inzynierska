@@ -1,55 +1,41 @@
-<html>
+<!DOCTYPE html>
+<html lang="en">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Match Details</title>
-    <style>
-        table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-        th, td {
-            border: 1px solid black;
-            padding: 8px;
-            text-align: center;
-        }
-        th {
-            background-color: #f2f2f2;
-        }
-        .high { color: green; font-weight: bold; }
-        .medium { color: orange; font-weight: bold; }
-        .low { color: red; font-weight: bold; }
-    </style>
 </head>
 <body>
-    <h2>Match Details</h2>
-    <table>
+    <h1>Match Details</h1>
+
+    <table border="1">
         <tr>
             <th>Nickname</th>
             <th>Rank</th>
-            <th>Win Rate</th>
+            <th>Champion</th>
+            <th>General Win Rate</th>
+            <th>Champion Win Rate</th>
             <th>KDA</th>
             <th>Gold/Minute</th>
             <th>Damage/Minute</th>
-            <th>Champion</th>
+            <th>Computed Elo</th>
         </tr>
+
         {% for player in players %}
         <tr>
-            <td>{{ player[0] }}</td>
-            <td>{{ player[1] }}</td>
-            <td class="{% if player[2]|float >= 60 %}high{% elif player[2]|float >= 50 %}medium{% else %}low{% endif %}">
-                {{ player[2] }}
-            </td>
-            <td class="{% if player[3]|float >= 3.0 %}high{% elif player[3]|float >= 2.0 %}medium{% else %}low{% endif %}">
-                {{ player[3] }}
-            </td>
-            <td class="{% if player[4]|float >= 450 %}high{% elif player[4]|float >= 350 %}medium{% else %}low{% endif %}">
-                {{ player[4] }}
-            </td>
-            <td class="{% if player[5]|float >= 600 %}high{% elif player[5]|float >= 400 %}medium{% else %}low{% endif %}">
-                {{ player[5] }}
-            </td>
-            <td>{{ player[6] }}</td>
+            <td>{{ player[0] }}</td>  <!-- Nickname -->
+            <td>{{ player[1] }}</td>  <!-- Rank -->
+            <td>{{ player[2] }}</td>  <!-- Champion -->
+            <td>{{ player[3] }}%</td>  <!-- General Win Rate -->
+            <td>{{ player[4] }}%</td>  <!-- Champion Win Rate -->
+            <td>{{ player[5] }}</td>  <!-- KDA -->
+            <td>{{ player[6] }}</td>  <!-- Gold/Minute -->
+            <td>{{ player[7] }}</td>  <!-- Damage/Minute -->
+            <td>{{ player[8] }}</td>  <!-- Computed Elo -->
         </tr>
         {% endfor %}
     </table>
+
+    <a href="/">Go Back</a>
 </body>
 </html>

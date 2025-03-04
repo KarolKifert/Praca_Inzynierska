@@ -3,55 +3,84 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Match History</title>
-    <style>
-        table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-        th, td {
-            border: 1px solid black;
-            padding: 8px;
-            text-align: center;
-        }
-        th {
-            background-color: #333;
-            color: white;
-        }
-        .winrate-high { background-color: #4CAF50; color: white; }
-        .winrate-medium { background-color: #FFD700; color: black; }
-        .winrate-low { background-color: #FF4500; color: white; }
-    </style>
+    <title>League Match Predictor</title>
 </head>
 <body>
-    <h1>Match History</h1>
-    <table>
-        <thead>
-            <tr>
-                <th>Match ID</th>
-                <th>Timestamp</th>
-                <th>Server</th>
-                <th>Weighted Win % (T1)</th>
-                <th>Weighted Win % (T2)</th>
-                <th>Bayesian Win % (T1)</th>
-                <th>Bayesian Win % (T2)</th>
-                <th>View Details</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for match in matches %}
-            <tr>
-                <td>{{ match[0] }}</td>
-                <td>{{ match[1] }}</td>
-                <td>{{ match[2] }}</td>
-                <td class="{% if match[3] >= 60 %}winrate-high{% elif match[3] >= 40 %}winrate-medium{% else %}winrate-low{% endif %}">{{ match[3] }}%</td>
-                <td class="{% if match[4] >= 60 %}winrate-high{% elif match[4] >= 40 %}winrate-medium{% else %}winrate-low{% endif %}">{{ match[4] }}%</td>
-                <td class="{% if match[5] >= 60 %}winrate-high{% elif match[5] >= 40 %}winrate-medium{% else %}winrate-low{% endif %}">{{ match[5] }}%</td>
-                <td class="{% if match[6] >= 60 %}winrate-high{% elif match[6] >= 40 %}winrate-medium{% else %}winrate-low{% endif %}">{{ match[6] }}%</td>
-                <td><a href="/match/{{ match[0] }}">View Details</a></td>
-            </tr>
-            {% endfor %}
-        </tbody>
+    <h1>League of Legends Match Prediction</h1>
+
+    <form id="scrapeForm">
+        <label for="summoner_name">Summoner Name:</label>
+        <input type="text" id="summoner_name" name="summoner_name" required>
+
+        <label for="hashtag">Hashtag (#):</label>
+        <input type="text" id="hashtag" name="hashtag" required>
+
+        <label for="server">Server:</label>
+        <select id="server" name="server" required>
+            <option value="euw">EUW</option>
+            <option value="na">NA</option>
+            <option value="kr">KR</option>
+            <option value="eune">EUNE</option>
+            <option value="lan">LAN</option>
+            <option value="las">LAS</option>
+            <option value="oce">OCE</option>
+            <option value="ru">RU</option>
+            <option value="tr">TR</option>
+            <option value="jp">JP</option>
+        </select>
+
+        <button type="submit">Start Scraping</button>
+    </form>
+
+    <p id="status"></p>
+
+    <h2>Previous Matches</h2>
+    <table border="1">
+        <tr>
+            <th>Match ID</th>
+            <th>Timestamp</th>
+            <th>Server</th>
+            <th>Weighted Win Rate (Team 1)</th>
+            <th>Weighted Win Rate (Team 2)</th>
+            <th>Bayesian Win Rate (Team 1)</th>
+            <th>Bayesian Win Rate (Team 2)</th>
+            <th>View Data</th>
+        </tr>
+        {% for match in matches %}
+        <tr>
+            <td>{{ match[0] }}</td>
+            <td>{{ match[1] }}</td>
+            <td>{{ match[2] }}</td>
+            <td>{{ match[3] }}%</td>
+            <td>{{ match[4] }}%</td>
+            <td>{{ match[5] }}%</td>
+            <td>{{ match[6] }}%</td>
+            <td><a href="{{ url_for('view_match', match_id=match[0]) }}">View</a></td>
+        </tr>
+        {% endfor %}
     </table>
+
+
+    <script>
+        document.getElementById("scrapeForm").addEventListener("submit", function(event) {
+            event.preventDefault();
+            document.getElementById("status").innerText = "Scraping in progress...";
+
+            fetch("/start_scraping", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    summoner_name: document.getElementById("summoner_name").value,
+                    hashtag: document.getElementById("hashtag").value,
+                    server: document.getElementById("server").value
+                })
+            }).then(response => response.json())
+              .then(data => {
+                  document.getElementById("status").innerText = data.status;
+                  setTimeout(() => location.reload(), 5000); // Refresh after 5 seconds
+              });
+        });
+    </script>
+
 </body>
 </html>

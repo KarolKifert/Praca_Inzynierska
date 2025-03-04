@@ -6,9 +6,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-import re
 
-# ✅ Champion Name Fix Mapping for OP.GG discrepancies
 CHAMPION_NAME_FIXES = {
     "MonkeyKing": "Wukong",
     "FiddleSticks": "Fiddlesticks",
@@ -30,37 +28,79 @@ def setup_selenium_driver():
     return webdriver.Chrome(options=options)
 
 
-def scrape_latest_matches():
-    """Scrapes the first live match from Porofessor."""
-    url = "https://porofessor.gg/pl/"
+def scrape_match_for_summoner(summoner_name, hashtag, server):
+    url = f"https://www.op.gg/summoners/{server}/{summoner_name.replace(' ', '%20')}-{hashtag}/ingame"
     driver = setup_selenium_driver()
-    wait = WebDriverWait(driver, 30)
 
     try:
+        print(f"🌐 Accessing OP.GG live match page: {url}")
         driver.get(url)
-        wait.until(
-            EC.presence_of_element_located((By.XPATH, '//ul[@class="cards-list no-margin-top no-margin-bottom"]/li')))
+        time.sleep(5)
 
-        match_element = driver.find_element(By.XPATH, '//ul[@class="cards-list no-margin-top no-margin-bottom"]/li[1]')
-        link_element = match_element.find_element(By.XPATH, './/a[contains(@class, "liveGameLink")]')
-        match_href = link_element.get_attribute("href")
+        wait = WebDriverWait(driver, 10)
+        player_elements = wait.until(EC.presence_of_all_elements_located((By.XPATH, '//td[@class="summoner-name"]/a')))
 
-        match_parts = match_href.split("/")[-2:]
-        server = match_parts[0]
-        nickname, hashtag = match_parts[1].rsplit("-", 1)
+        if not player_elements:
+            print(f"❌ No players found in the match for {summoner_name}.")
+            return None
 
-        return [(server, f"{nickname}-{hashtag}")]
+        print(f"✅ Found {len(player_elements)} players!")
+
+        players_data = []
+        for player_element in player_elements[:10]:
+            try:
+                spans = player_element.find_elements(By.TAG_NAME, 'span')
+                if len(spans) >= 2:
+                    player_nickname = spans[0].text.strip()
+                    player_hashtag = spans[1].text.strip()
+                    full_nickname = f"{player_nickname}#{player_hashtag}"
+                else:
+                    full_nickname = player_element.text.strip()
+
+                print(f"🎯 Processing player: {full_nickname}")
+
+                champion_element = player_element.find_element(By.XPATH, '../../td[@class="champion-image"]/a')
+                champion_href = champion_element.get_attribute('href')
+                champion_name = champion_href.split('/')[-2] if champion_href else "Unknown"
+
+                rank_element = player_element.find_element(By.XPATH, '../../td[@class="current-rank"]')
+                rank = rank_element.text.strip() if rank_element else "Unranked"
+
+                try:
+                    winrate_element = player_element.find_element(By.XPATH, '../../td[@class="winratio"]/strong')
+                    general_winrate = winrate_element.text.strip().replace("%", "")
+                    general_winrate = float(general_winrate) if general_winrate else 50.0
+                except:
+                    print(f"❌ Could not retrieve win rate for {full_nickname}, defaulting to 50%")
+                    general_winrate = 50.0
+
+            except Exception as e:
+                print(f"❌ Error retrieving data for {full_nickname}: {e}")
+                champion_name = "Unknown"
+                rank = "Unranked"
+                general_winrate = 50.0
+
+            players_data.append({
+                "nickname": full_nickname,
+                "champion": champion_name,
+                "rank": rank,
+                "general_winrate": general_winrate,
+                "champion_winrate": "N/A",
+                "kda": "N/A"
+            })
+
+        return players_data
 
     except Exception as e:
         print(f"❌ Error scraping match: {e}")
-        return []
+        return None
 
     finally:
         driver.quit()
 
 
+
 def scrape_players_and_champions(server, nickname):
-    """Scrapes the live match page for player details."""
     url = f"https://www.op.gg/summoners/{server}/{nickname}/ingame"
     driver = setup_selenium_driver()
 
@@ -85,7 +125,6 @@ def scrape_players_and_champions(server, nickname):
             print(f"🎯 Processing player: {player_nickname}")
 
             try:
-                # ✅ Scraping Champion
                 champion_element = player_element.find_element(By.XPATH, '../../td[@class="champion-image"]/a')
                 champion_href = champion_element.get_attribute('href')
                 champion_name = champion_href.split('/')[-2]
@@ -97,7 +136,6 @@ def scrape_players_and_champions(server, nickname):
                 champion_name = "Unknown"
 
             try:
-                # ✅ Scraping Rank
                 rank_element = player_element.find_element(By.XPATH, '../../td[@class="current-rank"]')
                 rank = rank_element.text.strip()
                 print(f"🏅 Rank for {player_nickname}: {rank}")
@@ -106,16 +144,12 @@ def scrape_players_and_champions(server, nickname):
                 print(f"❌ Error retrieving rank for {player_nickname}: {e}")
                 rank = "Unranked"
 
-            # Placeholder for KDA and winrate (potentially missing here)
             player_data = {
                 "nickname": player_nickname,
                 "champion": champion_name,
                 "rank": rank,
-                "champion_winrate": "N/A",
-                "kda": "N/A"
             }
 
-            # If KDA or champion winrate are missing, they'll be fetched later in scrape_champion_stats
             players_data.append(player_data)
 
         return players_data, champions_in_game
@@ -129,13 +163,12 @@ def scrape_players_and_champions(server, nickname):
 
 
 def extract_numeric_value(element):
-    """Extracts the first numeric value from the first div inside td."""
     try:
-        divs = element.find_elements(By.TAG_NAME, "div")  # ✅ Get all divs inside td
+        divs = element.find_elements(By.TAG_NAME, "div")
         if divs:
-            value_text = divs[0].text.strip().split("\n")[0]  # ✅ Only take the first value before \n
+            value_text = divs[0].text.strip().split("\n")[0]  # Only take the first value before \n
             value_text = value_text.replace(" ", "").replace(",", ".").replace("/m", "").replace("%", "")
-            return float(value_text)  # ✅ Convert to float now that we have a clean value
+            return float(value_text)  # Convert to float now that we have a clean value
         return 0.0  # ⬅️ Return 0.0 if no divs found
     except Exception as e:
         print(f"❌ Error extracting numeric value: {e}")
@@ -143,7 +176,6 @@ def extract_numeric_value(element):
 
 
 def scrape_champion_stats(server, full_nickname, champion):
-    """Scrapes champion performance stats or fetches from the top 3 played champions if missing."""
     formatted_nickname = urllib.parse.quote(full_nickname.replace("#", "-"))
     url = f"https://www.op.gg/summoners/{server}/{formatted_nickname}/champions"
 
@@ -183,13 +215,15 @@ def scrape_champion_stats(server, full_nickname, champion):
             try:
                 champ_winrate = champ_row.find_element(By.XPATH,
                                                        './/div[@class="winratio-graph"]/following-sibling::span').text.strip()
+                champ_winrate = champ_winrate.replace("%", "")  # ✅ Remove % sign
+                champ_winrate = float(champ_winrate)  # ✅ Convert to float immediately
             except:
-                champ_winrate = "N/A"
+                champ_winrate = 50.0  # Default value if scraping fails
 
             try:
                 champ_kda_element = champ_row.find_element(By.XPATH, './/strong[contains(@class, "ej6kayl1")]')
                 champ_kda = champ_kda_element.text.strip()
-                print(f"✅ Extracted KDA: {champ_kda}")  # 🛠 DEBUG: Check extracted KDA
+                print(f"✅ Extracted KDA: {champ_kda}")
             except Exception as e:
                 print(f"❌ Error extracting KDA: {e}")
                 champ_kda = "N/A"
@@ -232,7 +266,7 @@ def scrape_champion_stats(server, full_nickname, champion):
                     gold_values.append(gold_value)
 
             # Compute means only if data exists; otherwise, assign defaults
-            champ_winrate = f"{round(np.mean(winrates), 2)}%" if winrates else "50%"
+            champ_winrate = f"{round(np.mean(winrates), 2)}" if winrates else "50"
             champ_kda = round(np.mean(kdas), 2) if kdas else 2.5
             gold = round(np.mean(gold_values), 2) if gold_values else 500
             damage_per_minute = round(np.mean(damage_values), 2) if damage_values else 500
@@ -240,6 +274,9 @@ def scrape_champion_stats(server, full_nickname, champion):
         # Ensure KDA formatting is correct (remove trailing ':1' if present)
         if isinstance(champ_kda, str) and ":" in champ_kda:
             champ_kda = float(champ_kda.split(":")[0])
+
+        if champ_kda == "N/A" or champ_kda is None or champ_kda == "":
+            champ_kda = 2.5  # ⬅️ Ensuring we always have a valid numeric value
 
         return {
             "gold_per_minute": gold if gold is not None else 0.0,
@@ -250,14 +287,13 @@ def scrape_champion_stats(server, full_nickname, champion):
 
     except Exception as e:
         print(f"❌ Error retrieving champion stats: {e}")
-        return {"gold_per_minute": 0.0, "damage_per_minute": 0.0, "champion_winrate": 0.0, "kda": 0.0}
+        return {"gold_per_minute": 0.0, "damage_per_minute": 0.0, "champion_winrate": "50%", "kda": 2.5}
 
     finally:
         driver.quit()
 
 
 def get_combined_player_data(server, nickname):
-    """Scrapes player data one by one instead of all at once."""
     print(f"🔵 Fetching player data for {nickname} on {server}...")
 
     players_data, champions_in_game = scrape_players_and_champions(server, nickname)

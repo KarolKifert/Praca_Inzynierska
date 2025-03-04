@@ -1,12 +1,12 @@
 import sqlite3
 from datetime import datetime
-from elo_calculator import calculate_weighted_elo_probability, calculate_bayesian_elo_probability
-from scraper import scrape_latest_matches, get_combined_player_data
+from elo_calculator import calculate_match_probabilities
+from scraper import scrape_match_for_summoner, get_combined_player_data, scrape_champion_stats
+from elo_calculator import calculate_player_bayesian_elo
 
 DB_PATH = "matches.db"
 
 
-# Initialize a new database with a stable schema
 def init_db():
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
@@ -62,19 +62,11 @@ def save_match_data_to_db(server, players_data):
 
     timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
 
-    # Calculate probabilities before inserting into the database
-    team1 = players_data[:5]
-    team2 = players_data[5:]
-    match_prob_elo = calculate_weighted_elo_probability(team1, team2)
-    match_prob_bayes = calculate_bayesian_elo_probability(team1, team2)
-
     cursor.execute("""
         INSERT INTO matches (timestamp, server, team1_win_probability, team2_win_probability,
                             team1_win_probability_bayes, team2_win_probability_bayes, json_file_path)
         VALUES (?, ?, ?, ?, ?, ?, ?)
-    """, (timestamp, server, match_prob_elo["team1_win_probability"], match_prob_elo["team2_win_probability"],
-          match_prob_bayes["team1_win_probability"], match_prob_bayes["team2_win_probability"],
-          f"data/matches/match_{timestamp}.json"))
+    """, (timestamp, server, 0, 0, 0, 0, f"data/matches/match_{timestamp}.json"))
 
     match_id = cursor.lastrowid
 
@@ -82,10 +74,15 @@ def save_match_data_to_db(server, players_data):
         nickname = player.get("nickname", "Unknown")
         champion = player.get("champion", "Unknown")
         rank = player.get("rank", "Unranked")
-        win_rate = player.get("champion_winrate", 0.0)
-        kda = player.get("kda", 0.0)
-        gold = player.get("gold_per_minute", 0.0)
-        damage = player.get("damage_per_minute", 0.0)
+
+        champ_stats = scrape_champion_stats(server, nickname, champion)
+        player.update(champ_stats)
+
+        win_rate = player.get("general_winrate", 50)
+        champ_win_rate = player.get("champion_winrate", 50)
+        kda = player.get("kda", 2.5)
+        gold = player.get("gold_per_minute", 400)
+        damage = player.get("damage_per_minute", 500)
 
         cursor.execute("""
             INSERT INTO players (nickname, rank, win_rate, kda, gold_per_minute, damage_per_minute)
@@ -96,13 +93,36 @@ def save_match_data_to_db(server, players_data):
         cursor.execute("""
             INSERT INTO match_player_data (match_id, player_id, champion, general_winrate, champion_winrate, kda, gold_per_minute, damage_per_minute)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        """, (match_id, player_id, champion, None, win_rate, kda, gold, damage))
+        """, (match_id, player_id, champion, win_rate, champ_win_rate, kda, gold, damage))
+
+    conn.commit()
+
+    # ✅ Add debugging before using match_prob_elo
+    match_prob_elo, match_prob_bayes = calculate_match_probabilities(match_id, conn)
+
+    print(f"[DEBUG] match_prob_elo: {match_prob_elo} ({type(match_prob_elo)})")
+    print(f"[DEBUG] match_prob_bayes: {match_prob_bayes} ({type(match_prob_bayes)})")
+
+    if not isinstance(match_prob_elo, dict):
+        raise TypeError(f"❌ Expected dictionary but got {type(match_prob_elo)}: {match_prob_elo}")
+
+    if not isinstance(match_prob_bayes, dict):
+        raise TypeError(f"❌ Expected dictionary but got {type(match_prob_bayes)}: {match_prob_bayes}")
+
+    cursor.execute("""
+        UPDATE matches 
+        SET team1_win_probability = ?, team2_win_probability = ?,
+            team1_win_probability_bayes = ?, team2_win_probability_bayes = ?
+        WHERE match_id = ?
+    """, (match_prob_elo["team1_win_probability"], match_prob_elo["team2_win_probability"],
+          match_prob_bayes["team1_win_probability"], match_prob_bayes["team2_win_probability"],
+          match_id))
 
     conn.commit()
     conn.close()
+    print(f"✅ Match data saved! Probabilities computed after all data was inserted.")
 
 
-# Function to fetch match history
 def get_match_history():
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
@@ -112,24 +132,69 @@ def get_match_history():
     return matches
 
 
-# Function to fetch detailed match data
 def get_match_data(match_id):
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
+
+    # ✅ Correctly fetch data by joining match_player_data with players
     cursor.execute("""
-        SELECT p.nickname, p.rank, p.win_rate, p.kda, p.gold_per_minute, p.damage_per_minute, mp.champion
-        FROM players p
-        JOIN match_player_data mp ON p.player_id = mp.player_id
+        SELECT p.nickname, p.rank, mp.champion, mp.general_winrate, 
+               mp.champion_winrate, mp.kda, mp.gold_per_minute, mp.damage_per_minute
+        FROM match_player_data mp
+        JOIN players p ON mp.player_id = p.player_id  -- ✅ Fetch nickname & rank from players
         WHERE mp.match_id = ?
     """, (match_id,))
+
     players = cursor.fetchall()
     conn.close()
 
-    return players
+    player_list = []
+    for player in players:
+        try:
+            general_winrate = float(player[3]) if player[3] is not None else 50.0
+        except:
+            print(f"⚠️ Warning: Could not convert general win rate for {player[0]}, setting to default 50.0")
+            general_winrate = 50.0
+
+        try:
+            champion_winrate = float(player[4]) if player[4] is not None else 50.0
+        except:
+            print(f"⚠️ Warning: Could not convert champion win rate for {player[0]}, setting to default 50.0")
+            champion_winrate = 50.0
+
+        player_data = {
+            "nickname": player[0],
+            "rank": player[1],
+            "champion": player[2],
+            "general_winrate": general_winrate,
+            "champion_winrate": champion_winrate,
+            "kda": float(player[5]) if player[5] is not None else 2.5,
+            "gold_per_minute": float(player[6]) if player[6] is not None else 400,
+            "damage_per_minute": float(player[7]) if player[7] is not None else 500
+        }
+
+        player_elo = calculate_player_bayesian_elo(player_data)
+
+        player_list.append((
+            player[0],  # Nickname
+            player[1],  # Rank
+            player[2],  # Champion
+            general_winrate,  # General Win Rate
+            champion_winrate,  # Champion Win Rate
+            player[5],  # KDA
+            player[6],  # Gold/Minute
+            player[7],  # Damage/Minute
+            round(player_elo, 2)  # Computed Elo (rounded)
+        ))
+
+    return player_list
+
+
+
 
 
 if __name__ == "__main__":
-    matches = scrape_latest_matches()
+    matches = scrape_match_for_summoner()
     for server, nickname in matches:
         data = get_combined_player_data(server, nickname)
         save_match_data_to_db(server, data)
