@@ -1,6 +1,5 @@
 import numpy as np
 
-# Elo configuration
 weights = {
     'win_rate': 0.5,
     'rank_elo': 0.1,

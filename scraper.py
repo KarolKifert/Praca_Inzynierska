@@ -32,7 +32,6 @@ def scrape_match_for_summoner(riot_name, tag, server):
         return None
 
     try:
-        # 1. Get PUUID from Riot ID
         name_enc = quote(riot_name)
         tag_enc = quote(tag)
         acc_url = f"https://{match_region}.api.riotgames.com/riot/account/v1/accounts/by-riot-id/{name_enc}/{tag_enc}"
@@ -42,7 +41,6 @@ def scrape_match_for_summoner(riot_name, tag, server):
             return None
         puuid = acc_res.json()["puuid"]
 
-        # 2. Get Live Game Info using PUUID
         live_url = f"https://{region}.api.riotgames.com/lol/spectator/v5/active-games/by-summoner/{puuid}"
         live_res = requests.get(live_url, headers=HEADERS)
         if live_res.status_code != 200:
@@ -62,13 +60,10 @@ def scrape_match_for_summoner(riot_name, tag, server):
 
             print(f"🔍 Processing Player: {name} ({player_puuid}) playing {champ_name}")
 
-            # 1️⃣ Get Ranked Stats (League-V4 by summonerId)
             rank, general_winrate = get_rank_info(summoner_id, region)
 
-            # 2️⃣ Get Recent Match Stats (Match-V5 by puuid)
             stats = asyncio.run(get_recent_match_stats_async(player_puuid, match_region, champ_id))
 
-            # 3️⃣ Build Player Data Entry
             players_data.append({
                 "nickname": name,
                 "champion": champ_name,
@@ -78,7 +73,7 @@ def scrape_match_for_summoner(riot_name, tag, server):
                 "kda": round(stats["kda"], 2),
                 "gold_per_minute": round(stats["gold_per_minute"], 2),
                 "damage_per_minute": round(stats["damage_per_minute"], 2),
-                "champ_games": stats.get("champ_games", 0)  # ✅ Sample size info
+                "champ_games": stats.get("champ_games", 0)
             })
 
         return players_data
@@ -130,7 +125,6 @@ async def get_recent_match_stats_async(puuid, match_region, champ_id, match_coun
 
             match_ids = await ids_res.json()
 
-        # Batch fetch match details concurrently
         tasks = []
         for match_id in match_ids:
             match_url = f"https://{match_region}.api.riotgames.com/lol/match/v5/matches/{match_id}"
@@ -138,7 +132,6 @@ async def get_recent_match_stats_async(puuid, match_region, champ_id, match_coun
 
         participants_data = await asyncio.gather(*tasks)
 
-        # Process stats
         total_kills = total_deaths = total_assists = 0
         total_gpm = total_dpm = 0
         champ_games = champ_wins = 0

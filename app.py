@@ -38,7 +38,6 @@ def start_scraping():
         print("❌ Could not retrieve player data.")
         return redirect(url_for('index'))
 
-    # Calculate win probabilities
     team1 = players_data[:5]
     team2 = players_data[5:]
     weighted, bayesian = calculate_team_probabilities(team1, team2)

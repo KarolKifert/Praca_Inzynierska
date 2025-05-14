@@ -96,7 +96,6 @@ def get_match_data(match_id):
     cols = ["nickname", "rank", "champion", "general_winrate", "champion_winrate",
             "kda", "gold_per_minute", "damage_per_minute"]
 
-    # Compute individual ELOs
     player_dicts = [dict(zip(cols, p)) for p in players]
     player_elos = [round(calculate_player_elo(p), 2) for p in player_dicts]
 

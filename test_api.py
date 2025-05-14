@@ -29,9 +29,8 @@ def lookup_riot_account(riot_name, tag, match_region):
 
 
 if __name__ == "__main__":
-    # 🔁 EXAMPLE INPUT (you can change this!)
     riot_name = "xBoczek"
     tag = "EUW"
-    match_region = "europe"  # based on server: "euw" → "europe", "na" → "americas", etc.
+    match_region = "europe"
 
     lookup_riot_account(riot_name, tag, match_region)
