@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Match Details</title>
+  <link href="https://fonts.googleapis.com/css2?family=Beaufort+for+LOL&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Beaufort for LOL', serif;
+      margin: 0;
+      background-color: #0a0a0a;
+      color: #f0f0f0;
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+    }
+    header {
+      background-color: rgba(0, 0, 0, 0.7);
+      padding: 1rem 2rem;
+      border-bottom: 2px solid #444;
+      text-align: center;
+    }
+    h1 {
+      color: gold;
+      font-size: 2rem;
+    }
+    .team-section {
+      width: 90%;
+      margin: 2rem auto;
+      padding: 1rem;
+      background-color: rgba(0, 0, 0, 0.7);
+      border: 1px solid #333;
+      border-radius: 8px;
+    }
+    h2 {
+      text-align: center;
+      color: gold;
+      margin-bottom: 1rem;
+    }
+    .overview {
+      text-align: center;
+      font-size: 1.2rem;
+      margin: 1.5rem auto;
+      background-color: rgba(255, 215, 0, 0.05);
+      padding: 1rem;
+      border-radius: 6px;
+      width: 80%;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    th, td {
+      border: 1px solid #333;
+      padding: 0.75rem;
+      text-align: center;
+    }
+    th {
+      background-color: #222;
+      color: gold;
+    }
+    tr:nth-child(even) {
+      background-color: rgba(255, 255, 255, 0.05);
+    }
+    a {
+      color: #00bfff;
+      text-decoration: none;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Match Details</h1>
+  </header>
+
+  <div class="overview">
+    <strong>Win Probability Overview</strong><br>
+    Weighted: Team 1 — <span style="color: gold;">{{ match[4] }}%</span>, Team 2 — <span style="color: gold;">{{ match[5] }}%</span><br>
+    Bayesian: Team 1 — <span style="color: gold;">{{ match[6] }}%</span>, Team 2 — <span style="color: gold;">{{ match[7] }}%</span>
+  </div>
+
+  <div class="team-section">
+    <h2>Team 1</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Nickname</th>
+          <th>Rank</th>
+          <th>Champion</th>
+          <th>Win Rate</th>
+          <th>Champ WR</th>
+          <th>KDA</th>
+          <th>GPM</th>
+          <th>DPM</th>
+          <th>Player Elo</th>
+          <th>Team Elo</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for player in players[:5] %}
+        <tr>
+          <td>{{ player[0] }}</td>
+          <td>{{ player[1] }}</td>
+          <td>{{ player[2] }}</td>
+          <td>{{ player[3] }}%</td>
+          <td>{{ player[4] }}%</td>
+          <td>{{ player[5] }}</td>
+          <td>{{ player[6] }}</td>
+          <td>{{ player[7] }}</td>
+          <td>{{ player[8] }}</td>
+          <td>{{ player[9] }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="team-section">
+    <h2>Team 2</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Nickname</th>
+          <th>Rank</th>
+          <th>Champion</th>
+          <th>Win Rate</th>
+          <th>Champ WR</th>
+          <th>KDA</th>
+          <th>GPM</th>
+          <th>DPM</th>
+          <th>Player Elo</th>
+          <th>Team Elo</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for player in players[5:] %}
+        <tr>
+          <td>{{ player[0] }}</td>
+          <td>{{ player[1] }}</td>
+          <td>{{ player[2] }}</td>
+          <td>{{ player[3] }}%</td>
+          <td>{{ player[4] }}%</td>
+          <td>{{ player[5] }}</td>
+          <td>{{ player[6] }}</td>
+          <td>{{ player[7] }}</td>
+          <td>{{ player[8] }}</td>
+          <td>{{ player[9] }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</body>
+</html>

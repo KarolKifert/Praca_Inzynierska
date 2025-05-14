@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Match History</title>
+</head>
+<body>
+    <h1>Match History</h1>
+    <table border="1">
+        <tr>
+            <th>Match ID</th>
+            <th>Elo Probability (T1 vs T2)</th>
+            <th>Logistic Probability (T1 vs T2)</th>
+            <th>View Match</th>
+        </tr>
+        {% for match in matches %}
+        <tr>
+            <td>{{ match[0] }}</td>
+            <td>{{ match[1] }}% vs {{ match[2] }}%</td>
+            <td>{{ match[3] }}% vs {{ match[4] }}%</td>
+            <td><a href="/match/{{ match[0] }}">View</a></td>
+        </tr>
+        {% endfor %}
+    </table>
+    <a href="/">Go Back</a>
+</body>
+</html>
