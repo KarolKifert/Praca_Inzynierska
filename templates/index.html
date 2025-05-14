@@ -1,86 +1,204 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>League Match Predictor</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>League Match Predictor</title>
+  <link href="https://fonts.googleapis.com/css2?family=Beaufort+for+LOL&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/css/style.css" />
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Beaufort for LOL', serif;
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+      background-attachment: fixed;
+      transition: background-image 1.5s ease-in-out;
+      color: #f0f0f0;
+    }
+    header {
+      background-color: rgba(0, 0, 0, 0.6);
+      padding: 1rem 2rem;
+      border-bottom: 2px solid #444;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    h1 {
+      font-size: 2rem;
+      color: gold;
+    }
+    form {
+      background: rgba(0, 0, 0, 0.7);
+      padding: 1.5rem;
+      border: 1px solid #333;
+      margin: 2rem;
+      border-radius: 8px;
+      box-shadow: 0 0 10px #000;
+    }
+    label, input, select {
+      display: block;
+      margin-bottom: 0.5rem;
+    }
+    input, select {
+      width: 100%;
+      padding: 0.5rem;
+      background: #2a2a2a;
+      border: 1px solid #444;
+      color: #fff;
+    }
+    button {
+      padding: 0.6rem 1.2rem;
+      background: gold;
+      border: none;
+      border-radius: 4px;
+      color: #000;
+      cursor: pointer;
+      margin-top: 0.5rem;
+    }
+    table {
+      width: 90%;
+      margin: 2rem auto;
+      border-collapse: collapse;
+      background-color: rgba(0, 0, 0, 0.7);
+    }
+    th, td {
+      padding: 1rem;
+      border: 1px solid #333;
+      text-align: center;
+    }
+    th {
+      background: #222;
+      color: gold;
+    }
+    a {
+      color: #00bfff;
+      text-decoration: none;
+    }
+  </style>
 </head>
 <body>
-    <h1>League of Legends Match Prediction</h1>
+  <header style="justify-content: center;">
+  <h1>League of Legends Match Predictor</h1>
+</header>
 
-    <form id="scrapeForm">
-        <label for="summoner_name">Summoner Name:</label>
-        <input type="text" id="summoner_name" name="summoner_name" required>
+  <form id="scrapeForm" method="POST" action="/start_scraping" style="max-width: 400px; margin: 2rem auto;">
+    <label for="riot_id">Riot ID:</label>
+    <input type="text" id="riot_id" name="riot_id" required>
 
-        <label for="hashtag">Hashtag (#):</label>
-        <input type="text" id="hashtag" name="hashtag" required>
 
-        <label for="server">Server:</label>
-        <select id="server" name="server" required>
-            <option value="euw">EUW</option>
-            <option value="na">NA</option>
-            <option value="kr">KR</option>
-            <option value="eune">EUNE</option>
-            <option value="lan">LAN</option>
-            <option value="las">LAS</option>
-            <option value="oce">OCE</option>
-            <option value="ru">RU</option>
-            <option value="tr">TR</option>
-            <option value="jp">JP</option>
-        </select>
+    <label for="server">Server:</label>
+    <select id="server" name="server" required>
+      <option value="euw">EUW</option>
+      <option value="na">NA</option>
+      <option value="kr">KR</option>
+      <option value="eune">EUNE</option>
+      <option value="lan">LAN</option>
+      <option value="las">LAS</option>
+      <option value="oce">OCE</option>
+      <option value="ru">RU</option>
+      <option value="tr">TR</option>
+      <option value="jp">JP</option>
+    </select>
 
-        <button type="submit">Start Scraping</button>
-    </form>
+    <button type="submit">Start Prediction</button>
+  </form>
 
-    <p id="status"></p>
-
-    <h2>Previous Matches</h2>
-    <table border="1">
-        <tr>
-            <th>Match ID</th>
-            <th>Timestamp</th>
-            <th>Server</th>
-            <th>Weighted Win Rate (Team 1)</th>
-            <th>Weighted Win Rate (Team 2)</th>
-            <th>Bayesian Win Rate (Team 1)</th>
-            <th>Bayesian Win Rate (Team 2)</th>
-            <th>View Data</th>
-        </tr>
-        {% for match in matches %}
-        <tr>
-            <td>{{ match[0] }}</td>
-            <td>{{ match[1] }}</td>
-            <td>{{ match[2] }}</td>
-            <td>{{ match[3] }}%</td>
-            <td>{{ match[4] }}%</td>
-            <td>{{ match[5] }}%</td>
-            <td>{{ match[6] }}%</td>
-            <td><a href="{{ url_for('view_match', match_id=match[0]) }}">View</a></td>
-        </tr>
-        {% endfor %}
+  <section>
+    <h2 style="text-align: center; color: gold;">Match History</h2>
+    <table>
+      <thead>
+      <tr>
+        <th>Summoner</th>
+        <th>Timestamp</th>
+        <th>Server</th>
+        <th>Overview</th>
+      </tr>
+      </thead>
+      <tbody>
+      {% for match in matches %}
+      <tr>
+        <td>{{ match[0] }}</td>  <!-- summoner -->
+        <td>{{ match[1] }}</td>  <!-- timestamp -->
+        <td>{{ match[2] }}</td>  <!-- server -->
+        <td><a href="{{ url_for('match_details', match_id=match[3]) }}">View</a></td>
+      </tr>
+      {% endfor %}
+      </tbody>
     </table>
+  </section>
 
+  <script>
+  document.addEventListener("DOMContentLoaded", () => {
+    const splashImages = [
+      "/static/images/splash1.jpg",
+      "/static/images/splash2.jpg",
+      "/static/images/splash3.jpg",
+      "/static/images/splash4.jpg",
+      "/static/images/splash5.jpg",
+      "/static/images/splash6.jpg",
+      "/static/images/splash7.jpg",
+      "/static/images/splash8.jpg",
+      "/static/images/splash9.jpg",
+      "/static/images/splash10.jpg",
+      "/static/images/splash11.jpg",
+      "/static/images/splash12.jpg",
+      "/static/images/splash13.jpg",
+      "/static/images/splash14.jpg",
+      "/static/images/splash15.jpg",
+      "/static/images/splash16.jpg",
+      "/static/images/splash17.jpg",
+      "/static/images/splash18.jpg",
+      "/static/images/splash19.jpg",
+      "/static/images/splash20.jpg"
+    ];
 
-    <script>
-        document.getElementById("scrapeForm").addEventListener("submit", function(event) {
-            event.preventDefault();
-            document.getElementById("status").innerText = "Scraping in progress...";
+    let index = 0;
 
-            fetch("/start_scraping", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    summoner_name: document.getElementById("summoner_name").value,
-                    hashtag: document.getElementById("hashtag").value,
-                    server: document.getElementById("server").value
-                })
-            }).then(response => response.json())
-              .then(data => {
-                  document.getElementById("status").innerText = data.status;
-                  setTimeout(() => location.reload(), 5000); // Refresh after 5 seconds
-              });
-        });
-    </script>
+    const bg1 = document.createElement('div');
+    const bg2 = document.createElement('div');
+    [bg1, bg2].forEach(bg => {
+      bg.style.position = 'fixed';
+      bg.style.top = '0';
+      bg.style.left = '0';
+      bg.style.width = '100%';
+      bg.style.height = '100%';
+      bg.style.zIndex = '-1';
+      bg.style.transition = 'opacity 2s ease-in-out';
+      bg.style.backgroundSize = 'cover';
+      bg.style.backgroundPosition = 'center';
+      bg.style.backgroundRepeat = 'no-repeat';
+      bg.style.backgroundAttachment = 'fixed';
+      bg.style.opacity = '0';
+      document.body.appendChild(bg);
+    });
 
+    bg1.style.backgroundImage = `linear-gradient(to bottom, rgba(0,0,0,0.4), rgba(0,0,0,0.6)), url('${splashImages[index]}')`;
+    bg1.style.opacity = '1';
+
+    let isBg1Active = true;
+    index = (index + 1) % splashImages.length;
+
+    function rotateBackground() {
+      const nextImage = `linear-gradient(to bottom, rgba(0,0,0,0.4), rgba(0,0,0,0.6)), url('${splashImages[index]}')`;
+
+      if (isBg1Active) {
+        bg2.style.backgroundImage = nextImage;
+        bg2.style.opacity = '1';
+        bg1.style.opacity = '0';
+      } else {
+        bg1.style.backgroundImage = nextImage;
+        bg1.style.opacity = '1';
+        bg2.style.opacity = '0';
+      }
+
+      isBg1Active = !isBg1Active;
+      index = (index + 1) % splashImages.length;
+    }
+
+    setInterval(rotateBackground, 10000);
+  });
+</script>
 </body>
 </html>
