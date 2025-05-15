@@ -105,16 +105,23 @@ def get_rank_info(summoner_id, region):
 import asyncio
 import aiohttp
 
-async def fetch_match_detail(session, url, headers, puuid):
-    async with session.get(url, headers=headers) as resp:
-        if resp.status != 200:
-            print(f"❌ Failed to fetch match {url}: {resp.status}")
-            return None
-        data = await resp.json()
-        participant = next((p for p in data["info"]["participants"] if p["puuid"] == puuid), None)
-        return participant
+semaphore = asyncio.Semaphore(5)  # Limit concurrency to 5 at a time (adjustable)
 
-async def get_recent_match_stats_async(puuid, match_region, champ_id, match_count=20):
+async def fetch_match_detail(session, url, headers, puuid):
+    async with semaphore:
+        async with session.get(url, headers=headers) as resp:
+            if resp.status != 200:
+                print(f"❌ Failed to fetch match {url}: {resp.status}")
+                return None
+
+            data = await resp.json()
+            participant = next((p for p in data["info"]["participants"] if p["puuid"] == puuid), None)
+
+            await asyncio.sleep(1.5)  # Delay each request politely (1.5 sec is safe for dev key)
+
+            return participant
+
+async def get_recent_match_stats_async(puuid, match_region, champ_id, match_count=10):
     match_ids_url = f"https://{match_region}.api.riotgames.com/lol/match/v5/matches/by-puuid/{puuid}/ids?start=0&count={match_count}"
 
     async with aiohttp.ClientSession() as session:
@@ -161,6 +168,7 @@ async def get_recent_match_stats_async(puuid, match_region, champ_id, match_coun
             "champ_games": champ_games
         }
 
+
 def default_stats():
     return {
         "kda": 2.5,
@@ -169,8 +177,6 @@ def default_stats():
         "champion_winrate": 50.0,
         "champ_games": 0
     }
-
-
 
 
 def get_champion_name_by_id(champ_id):
