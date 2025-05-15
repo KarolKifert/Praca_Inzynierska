@@ -3,7 +3,6 @@ import requests
 from urllib.parse import quote
 from dotenv import load_dotenv
 from champion_mapper import get_champion_name
-
 import asyncio
 import aiohttp
 
@@ -25,9 +24,25 @@ MATCH_REGION = {
     "las": "americas", "oce": "sea", "kr": "asia", "jp": "asia", "ru": "europe", "tr": "europe"
 }
 
-semaphore = asyncio.Semaphore(5)
+def get_rank_info(summoner_id, region):
+    url = f"https://{region}.api.riotgames.com/lol/league/v4/entries/by-summoner/{summoner_id}"
+    res = requests.get(url, headers=HEADERS)
+    if res.status_code != 200:
+        return "Unranked", 50.0
 
-async def fetch_match_detail(session, url, headers, puuid):
+    for entry in res.json():
+        if entry["queueType"] == "RANKED_SOLO_5x5":
+            tier = entry["tier"].capitalize()
+            div = entry["rank"]
+            lp = entry["leaguePoints"]
+            wins = entry["wins"]
+            losses = entry["losses"]
+            wr = (wins / (wins + losses)) * 100 if (wins + losses) > 0 else 50.0
+            return f"{tier} {div} ({lp} LP)", wr
+
+    return "Unranked", 50.0
+
+async def fetch_match_detail(session, url, headers, puuid, semaphore):
     async with semaphore:
         async with session.get(url, headers=headers) as resp:
             if resp.status != 200:
@@ -37,10 +52,12 @@ async def fetch_match_detail(session, url, headers, puuid):
             data = await resp.json()
             participant = next((p for p in data["info"]["participants"] if p["puuid"] == puuid), None)
 
-            await asyncio.sleep(1.5)  # Throttle requests
+            await asyncio.sleep(1.5)  # Rate limit safety
             return participant
 
 async def get_recent_match_stats_async(puuid, match_region, champ_id, match_count=10):
+    semaphore = asyncio.Semaphore(5)  # ✅ Created per-call to avoid event loop clash
+
     match_ids_url = f"https://{match_region}.api.riotgames.com/lol/match/v5/matches/by-puuid/{puuid}/ids?start=0&count={match_count}"
 
     async with aiohttp.ClientSession() as session:
@@ -54,7 +71,7 @@ async def get_recent_match_stats_async(puuid, match_region, champ_id, match_coun
         tasks = []
         for match_id in match_ids:
             match_url = f"https://{match_region}.api.riotgames.com/lol/match/v5/matches/{match_id}"
-            tasks.append(fetch_match_detail(session, match_url, HEADERS, puuid))
+            tasks.append(fetch_match_detail(session, match_url, HEADERS, puuid, semaphore))
 
         participants_data = await asyncio.gather(*tasks)
 
@@ -96,25 +113,6 @@ def default_stats():
         "champ_games": 0
     }
 
-def get_rank_info(summoner_id, region):
-    url = f"https://{region}.api.riotgames.com/lol/league/v4/entries/by-summoner/{summoner_id}"
-    res = requests.get(url, headers=HEADERS)
-    if res.status_code != 200:
-        return "Unranked", 50.0
-
-    for entry in res.json():
-        if entry["queueType"] == "RANKED_SOLO_5x5":
-            tier = entry["tier"].capitalize()
-            div = entry["rank"]
-            lp = entry["leaguePoints"]
-            wins = entry["wins"]
-            losses = entry["losses"]
-            wr = (wins / (wins + losses)) * 100 if (wins + losses) > 0 else 50.0
-            return f"{tier} {div} ({lp} LP)", wr
-
-    return "Unranked", 50.0
-
-# ✅ ASYNC compatible wrapper
 async def scrape_match_for_summoner(riot_name, tag, server):
     region = REGION_ROUTING.get(server.lower())
     match_region = MATCH_REGION.get(server.lower())
@@ -123,7 +121,6 @@ async def scrape_match_for_summoner(riot_name, tag, server):
         return None
 
     try:
-        # Get PUUID
         name_enc = quote(riot_name)
         tag_enc = quote(tag)
         acc_url = f"https://{match_region}.api.riotgames.com/riot/account/v1/accounts/by-riot-id/{name_enc}/{tag_enc}"
@@ -133,7 +130,6 @@ async def scrape_match_for_summoner(riot_name, tag, server):
             return None
         puuid = acc_res.json()["puuid"]
 
-        # Get Active Game
         live_url = f"https://{region}.api.riotgames.com/lol/spectator/v5/active-games/by-summoner/{puuid}"
         live_res = requests.get(live_url, headers=HEADERS)
         if live_res.status_code != 200:
@@ -146,7 +142,7 @@ async def scrape_match_for_summoner(riot_name, tag, server):
         players_data = []
 
         for participant in participants:
-            print(f"\n🟡 Raw participant data: {participant}")
+            print(f"🟡 Participant Data: {participant}")
 
             name = participant.get("summonerName", "Unknown")
             summoner_id = participant.get("summonerId")
@@ -154,7 +150,7 @@ async def scrape_match_for_summoner(riot_name, tag, server):
             champ_id = participant.get("championId")
             champ_name = get_champion_name(champ_id)
 
-            print(f"→ Summoner: {name} | Champ: {champ_name}")
+            print(f"→ Player: {name} | Champion: {champ_name}")
 
             rank, general_winrate = get_rank_info(summoner_id, region)
             print(f"✅ Rank: {rank}, WR: {general_winrate}%")
