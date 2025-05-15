@@ -1,10 +1,11 @@
 import os
 import requests
+import asyncio
+import aiohttp
 from urllib.parse import quote
 from dotenv import load_dotenv
 from champion_mapper import get_champion_name
-import aiohttp
-import asyncio
+import random
 
 load_dotenv()
 RIOT_API_KEY = os.getenv("RIOT_API_KEY")
@@ -42,9 +43,9 @@ def get_rank_info(summoner_id, region):
 
     return "Unranked", 50.0
 
-async def fetch_match_detail(session, url, headers, puuid, semaphore):
+async def fetch_match_detail(session, url, puuid, semaphore):
     async with semaphore:
-        async with session.get(url, headers=headers) as resp:
+        async with session.get(url, headers=HEADERS) as resp:
             if resp.status != 200:
                 print(f"❌ Failed to fetch match {url}: {resp.status}")
                 return None
@@ -52,15 +53,15 @@ async def fetch_match_detail(session, url, headers, puuid, semaphore):
             data = await resp.json()
             participant = next((p for p in data["info"]["participants"] if p["puuid"] == puuid), None)
 
-            await asyncio.sleep(1.5)
+            await asyncio.sleep(2.0 + random.uniform(0.2, 0.5))
+
             return participant
 
 async def get_recent_match_stats_async(puuid, match_region, champ_id, match_count=10):
-    semaphore = asyncio.Semaphore(5)  # ✅ Local semaphore per call
-
-    match_ids_url = f"https://{match_region}.api.riotgames.com/lol/match/v5/matches/by-puuid/{puuid}/ids?start=0&count={match_count}"
+    semaphore = asyncio.Semaphore(5)
 
     async with aiohttp.ClientSession() as session:
+        match_ids_url = f"https://{match_region}.api.riotgames.com/lol/match/v5/matches/by-puuid/{puuid}/ids?start=0&count={match_count}"
         async with session.get(match_ids_url, headers=HEADERS) as ids_res:
             if ids_res.status != 200:
                 print(f"❌ Failed to fetch match IDs: {ids_res.status}")
@@ -69,12 +70,13 @@ async def get_recent_match_stats_async(puuid, match_region, champ_id, match_coun
             match_ids = await ids_res.json()
 
         tasks = [
-            fetch_match_detail(session, f"https://{match_region}.api.riotgames.com/lol/match/v5/matches/{match_id}", HEADERS, puuid, semaphore)
+            fetch_match_detail(session, f"https://{match_region}.api.riotgames.com/lol/match/v5/matches/{match_id}", puuid, semaphore)
             for match_id in match_ids
         ]
 
         participants_data = await asyncio.gather(*tasks)
 
+    # Aggregate stats
     total_kills = total_deaths = total_assists = 0
     total_gpm = total_dpm = 0
     champ_games = champ_wins = 0
@@ -148,13 +150,11 @@ async def scrape_match_for_summoner(riot_name, tag, server):
         champ_id = participant.get("championId")
         champ_name = get_champion_name(champ_id)
 
-        print(f"→ {name} playing {champ_name}")
-
         rank, general_winrate = get_rank_info(summoner_id, region)
-        print(f"✅ Rank: {rank}, WR: {general_winrate}%")
+        print(f"✅ {name} ({rank}, WR {general_winrate}%) playing {champ_name}")
 
-        stats = await get_recent_match_stats_async(player_puuid, match_region, champ_id)
-        print(f"✅ Stats: KDA {stats['kda']}, GPM {stats['gold_per_minute']}, WR {stats['champion_winrate']} ({stats['champ_games']} games)")
+        stats = await get_recent_match_stats_async(player_puuid, match_region, champ_id, match_count=5)
+        print(f"✅ Stats: {stats}")
 
         players_data.append({
             "nickname": name,
