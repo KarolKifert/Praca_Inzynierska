@@ -3,10 +3,23 @@ from scraper import scrape_match_for_summoner
 from database import save_match_data_to_db, get_match_history, get_match_data, get_match_by_id
 from elo_calculator import calculate_team_probabilities
 from database import init_db
+import asyncio
 
 init_db()
 
 app = Flask(__name__)
+
+def run_async(coro):
+    try:
+        loop = asyncio.get_event_loop()
+    except RuntimeError:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+
+    if loop.is_running():
+        return asyncio.ensure_future(coro)
+    else:
+        return loop.run_until_complete(coro)
 
 @app.route('/')
 def index():
@@ -18,7 +31,6 @@ def match_details(match_id):
     match = get_match_by_id(match_id)
     players = get_match_data(match_id)
     return render_template("match_details.html", match=match, players=players)
-
 
 @app.route('/start_scraping', methods=['POST'])
 def start_scraping():
@@ -32,7 +44,12 @@ def start_scraping():
     riot_name, tag = riot_id.split('#')
 
     print(f"🔍 Starting match scan for {riot_name}#{tag} on {server}")
-    players_data = scrape_match_for_summoner(riot_name, tag, server)
+
+    players_data = run_async(scrape_match_for_summoner(riot_name, tag, server))
+
+    if asyncio.isfuture(players_data):
+        loop = asyncio.get_event_loop()
+        players_data = loop.run_until_complete(players_data)
 
     if not players_data:
         print("❌ Could not retrieve player data.")
@@ -42,11 +59,9 @@ def start_scraping():
     team2 = players_data[5:]
     weighted, bayesian = calculate_team_probabilities(team1, team2)
 
-    # Save data to DB
     match_id = save_match_data_to_db(players_data, weighted, bayesian, riot_name, server)
 
     return redirect(url_for('match_details', match_id=match_id))
-
 
 if __name__ == '__main__':
     app.run(debug=True)
