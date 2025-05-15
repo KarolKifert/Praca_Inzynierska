@@ -6,20 +6,7 @@ from database import init_db
 import asyncio
 
 init_db()
-
 app = Flask(__name__)
-
-def run_async(coro):
-    try:
-        loop = asyncio.get_event_loop()
-    except RuntimeError:
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-
-    if loop.is_running():
-        return asyncio.ensure_future(coro)
-    else:
-        return loop.run_until_complete(coro)
 
 @app.route('/')
 def index():
@@ -43,13 +30,18 @@ def start_scraping():
 
     riot_name, tag = riot_id.split('#')
 
-    print(f"🔍 Starting match scan for {riot_name}#{tag} on {server}")
-
-    players_data = run_async(scrape_match_for_summoner(riot_name, tag, server))
-
-    if asyncio.isfuture(players_data):
+    try:
         loop = asyncio.get_event_loop()
-        players_data = loop.run_until_complete(players_data)
+    except RuntimeError:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+
+    if loop.is_running():
+        # ASGI / Dev server context
+        task = asyncio.ensure_future(scrape_match_for_summoner(riot_name, tag, server))
+        players_data = loop.run_until_complete(task)
+    else:
+        players_data = loop.run_until_complete(scrape_match_for_summoner(riot_name, tag, server))
 
     if not players_data:
         print("❌ Could not retrieve player data.")

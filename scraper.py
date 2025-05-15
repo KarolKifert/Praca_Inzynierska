@@ -3,8 +3,8 @@ import requests
 from urllib.parse import quote
 from dotenv import load_dotenv
 from champion_mapper import get_champion_name
-import asyncio
 import aiohttp
+import asyncio
 
 load_dotenv()
 RIOT_API_KEY = os.getenv("RIOT_API_KEY")
@@ -52,11 +52,11 @@ async def fetch_match_detail(session, url, headers, puuid, semaphore):
             data = await resp.json()
             participant = next((p for p in data["info"]["participants"] if p["puuid"] == puuid), None)
 
-            await asyncio.sleep(1.5)  # Rate limit safety
+            await asyncio.sleep(1.5)
             return participant
 
 async def get_recent_match_stats_async(puuid, match_region, champ_id, match_count=10):
-    semaphore = asyncio.Semaphore(5)  # ✅ Created per-call to avoid event loop clash
+    semaphore = asyncio.Semaphore(5)  # ✅ Local semaphore per call
 
     match_ids_url = f"https://{match_region}.api.riotgames.com/lol/match/v5/matches/by-puuid/{puuid}/ids?start=0&count={match_count}"
 
@@ -68,41 +68,41 @@ async def get_recent_match_stats_async(puuid, match_region, champ_id, match_coun
 
             match_ids = await ids_res.json()
 
-        tasks = []
-        for match_id in match_ids:
-            match_url = f"https://{match_region}.api.riotgames.com/lol/match/v5/matches/{match_id}"
-            tasks.append(fetch_match_detail(session, match_url, HEADERS, puuid, semaphore))
+        tasks = [
+            fetch_match_detail(session, f"https://{match_region}.api.riotgames.com/lol/match/v5/matches/{match_id}", HEADERS, puuid, semaphore)
+            for match_id in match_ids
+        ]
 
         participants_data = await asyncio.gather(*tasks)
 
-        total_kills = total_deaths = total_assists = 0
-        total_gpm = total_dpm = 0
-        champ_games = champ_wins = 0
+    total_kills = total_deaths = total_assists = 0
+    total_gpm = total_dpm = 0
+    champ_games = champ_wins = 0
 
-        for participant in participants_data:
-            if not participant:
-                continue
+    for participant in participants_data:
+        if not participant:
+            continue
 
-            total_kills += participant.get("kills", 0)
-            total_deaths += max(participant.get("deaths", 1), 1)
-            total_assists += participant.get("assists", 0)
-            total_gpm += participant["goldEarned"] / (participant["timePlayed"] / 60)
-            total_dpm += participant["totalDamageDealtToChampions"] / (participant["timePlayed"] / 60)
+        total_kills += participant.get("kills", 0)
+        total_deaths += max(participant.get("deaths", 1), 1)
+        total_assists += participant.get("assists", 0)
+        total_gpm += participant["goldEarned"] / (participant["timePlayed"] / 60)
+        total_dpm += participant["totalDamageDealtToChampions"] / (participant["timePlayed"] / 60)
 
-            if participant["championId"] == champ_id:
-                champ_games += 1
-                if participant.get("win"):
-                    champ_wins += 1
+        if participant["championId"] == champ_id:
+            champ_games += 1
+            if participant.get("win"):
+                champ_wins += 1
 
-        games_played = len([p for p in participants_data if p])
+    games_played = len([p for p in participants_data if p])
 
-        return {
-            "kda": (total_kills + total_assists) / total_deaths if total_deaths else 2.5,
-            "gold_per_minute": total_gpm / games_played if games_played else 400,
-            "damage_per_minute": total_dpm / games_played if games_played else 500,
-            "champion_winrate": (champ_wins / champ_games) * 100 if champ_games else 50.0,
-            "champ_games": champ_games
-        }
+    return {
+        "kda": (total_kills + total_assists) / total_deaths if total_deaths else 2.5,
+        "gold_per_minute": total_gpm / games_played if games_played else 400,
+        "damage_per_minute": total_dpm / games_played if games_played else 500,
+        "champion_winrate": (champ_wins / champ_games) * 100 if champ_games else 50.0,
+        "champ_games": champ_games
+    }
 
 def default_stats():
     return {
@@ -120,58 +120,52 @@ async def scrape_match_for_summoner(riot_name, tag, server):
         print(f"❌ Invalid server region: {server}")
         return None
 
-    try:
-        name_enc = quote(riot_name)
-        tag_enc = quote(tag)
-        acc_url = f"https://{match_region}.api.riotgames.com/riot/account/v1/accounts/by-riot-id/{name_enc}/{tag_enc}"
-        acc_res = requests.get(acc_url, headers=HEADERS)
-        if acc_res.status_code != 200:
-            print(f"❌ Failed to fetch Riot ID: {acc_res.text}")
-            return None
-        puuid = acc_res.json()["puuid"]
-
-        live_url = f"https://{region}.api.riotgames.com/lol/spectator/v5/active-games/by-summoner/{puuid}"
-        live_res = requests.get(live_url, headers=HEADERS)
-        if live_res.status_code != 200:
-            print("❌ Summoner is not in a live game.")
-            return None
-
-        game_data = live_res.json()
-        participants = game_data.get("participants", [])
-
-        players_data = []
-
-        for participant in participants:
-            print(f"🟡 Participant Data: {participant}")
-
-            name = participant.get("summonerName", "Unknown")
-            summoner_id = participant.get("summonerId")
-            player_puuid = participant.get("puuid")
-            champ_id = participant.get("championId")
-            champ_name = get_champion_name(champ_id)
-
-            print(f"→ Player: {name} | Champion: {champ_name}")
-
-            rank, general_winrate = get_rank_info(summoner_id, region)
-            print(f"✅ Rank: {rank}, WR: {general_winrate}%")
-
-            stats = await get_recent_match_stats_async(player_puuid, match_region, champ_id)
-            print(f"✅ Stats: KDA {stats['kda']}, GPM {stats['gold_per_minute']}, Champ WR {stats['champion_winrate']} ({stats['champ_games']} games)")
-
-            players_data.append({
-                "nickname": name,
-                "champion": champ_name,
-                "rank": rank,
-                "general_winrate": round(general_winrate, 2),
-                "champion_winrate": round(stats["champion_winrate"], 2),
-                "kda": round(stats["kda"], 2),
-                "gold_per_minute": round(stats["gold_per_minute"], 2),
-                "damage_per_minute": round(stats["damage_per_minute"], 2),
-                "champ_games": stats.get("champ_games", 0)
-            })
-
-        return players_data
-
-    except Exception as e:
-        print(f"❌ Unexpected error: {e}")
+    name_enc = quote(riot_name)
+    tag_enc = quote(tag)
+    acc_url = f"https://{match_region}.api.riotgames.com/riot/account/v1/accounts/by-riot-id/{name_enc}/{tag_enc}"
+    acc_res = requests.get(acc_url, headers=HEADERS)
+    if acc_res.status_code != 200:
+        print(f"❌ Failed to fetch Riot ID: {acc_res.text}")
         return None
+    puuid = acc_res.json()["puuid"]
+
+    live_url = f"https://{region}.api.riotgames.com/lol/spectator/v5/active-games/by-summoner/{puuid}"
+    live_res = requests.get(live_url, headers=HEADERS)
+    if live_res.status_code != 200:
+        print("❌ Summoner is not in a live game.")
+        return None
+
+    game_data = live_res.json()
+    participants = game_data.get("participants", [])
+
+    players_data = []
+    for participant in participants:
+        print(f"🔎 Participant Data: {participant}")
+
+        name = participant.get("summonerName", "Unknown")
+        summoner_id = participant.get("summonerId")
+        player_puuid = participant.get("puuid")
+        champ_id = participant.get("championId")
+        champ_name = get_champion_name(champ_id)
+
+        print(f"→ {name} playing {champ_name}")
+
+        rank, general_winrate = get_rank_info(summoner_id, region)
+        print(f"✅ Rank: {rank}, WR: {general_winrate}%")
+
+        stats = await get_recent_match_stats_async(player_puuid, match_region, champ_id)
+        print(f"✅ Stats: KDA {stats['kda']}, GPM {stats['gold_per_minute']}, WR {stats['champion_winrate']} ({stats['champ_games']} games)")
+
+        players_data.append({
+            "nickname": name,
+            "champion": champ_name,
+            "rank": rank,
+            "general_winrate": round(general_winrate, 2),
+            "champion_winrate": round(stats["champion_winrate"], 2),
+            "kda": round(stats["kda"], 2),
+            "gold_per_minute": round(stats["gold_per_minute"], 2),
+            "damage_per_minute": round(stats["damage_per_minute"], 2),
+            "champ_games": stats.get("champ_games", 0)
+        })
+
+    return players_data
