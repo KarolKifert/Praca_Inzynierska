@@ -49,17 +49,23 @@ def calculate_player_elo(player):
 def expected_win_probability(elo_a, elo_b):
     return 1 / (1 + 10 ** ((elo_b - elo_a) / 400))
 
-def calculate_team_probabilities(team1, team2):
-    import numpy as np
 
+def calculate_team_probabilities(team1, team2):
     team1_elos = [calculate_player_elo(p) for p in team1]
     team2_elos = [calculate_player_elo(p) for p in team2]
 
-    avg_elo_team1 = np.mean(team1_elos)
-    avg_elo_team2 = np.mean(team2_elos)
+    mean1 = np.mean(team1_elos)
+    mean2 = np.mean(team2_elos)
 
-    prob1 = expected_win_probability(avg_elo_team1, avg_elo_team2)
+    prob1 = 1 / (1 + 10 ** ((mean2 - mean1) / 400))
     prob2 = 1 - prob1
+
+    var1 = np.var(team1_elos) + 100
+    var2 = np.var(team2_elos) + 100
+
+    diff = mean1 - mean2
+    bayes1 = 1 / (1 + np.exp(-diff / np.sqrt(var1 + var2)))
+    bayes2 = 1 - bayes1
 
     return (
         {
@@ -67,7 +73,8 @@ def calculate_team_probabilities(team1, team2):
             "team2_win_probability": round(prob2 * 100, 2)
         },
         {
-            "team1_win_probability": None,
-            "team2_win_probability": None
+            "team1_win_probability": round(bayes1 * 100, 2),
+            "team2_win_probability": round(bayes2 * 100, 2)
         }
     )
+
