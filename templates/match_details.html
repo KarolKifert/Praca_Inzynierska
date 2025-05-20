@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Match Details</title>
   <link href="https://fonts.googleapis.com/css2?family=Beaufort+for+LOL&display=swap" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
   <style>
     body {
       font-family: 'Beaufort for LOL', serif;
@@ -70,86 +72,102 @@
   </style>
 </head>
 <body>
-  <header>
-    <h1>Match Details</h1>
-  </header>
 
-  <div class="overview">
-    <strong>Win Probability Overview</strong><br>
-    Weighted: Team 1 — <span style="color: gold;">{{ match[4] }}%</span>, Team 2 — <span style="color: gold;">{{ match[5] }}%</span><br>
-    Bayesian: Team 1 — <span style="color: gold;">{{ match[6] }}%</span>, Team 2 — <span style="color: gold;">{{ match[7] }}%</span>
-  </div>
+<header>
+  <h1>Match Details</h1>
+</header>
 
-  <div class="team-section">
-    <h2>Team 1</h2>
-    <table>
-      <thead>
-        <tr>
-          <th>Nickname</th>
-          <th>Rank</th>
-          <th>Champion</th>
-          <th>Win Rate</th>
-          <th>Champ WR</th>
-          <th>KDA</th>
-          <th>GPM</th>
-          <th>DPM</th>
-          <th>Player Elo</th>
-          <th>Team Elo</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for player in players[:5] %}
-        <tr>
-          <td>{{ player[0] }}</td>
-          <td>{{ player[1] }}</td>
-          <td>{{ player[2] }}</td>
-          <td>{{ player[3] }}%</td>
-          <td>{{ player[4] }}%</td>
-          <td>{{ player[5] }}</td>
-          <td>{{ player[6] }}</td>
-          <td>{{ player[7] }}</td>
-          <td>{{ player[8] }}</td>
-          <td>{{ player[9] }}</td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
+<div class="overview">
+  <strong>Win Probability Overview</strong><br>
+  Weighted
+  <span data-bs-toggle="tooltip" title="Based on average Elo of both teams.">
+    <i class="bi bi-question-circle-fill"></i>
+  </span>:
+  Team 1 — <span style="color: gold;">{{ match[4] }}%</span>, Team 2 — <span style="color: gold;">{{ match[5] }}%</span><br>
 
-  <div class="team-section">
-    <h2>Team 2</h2>
-    <table>
-      <thead>
-        <tr>
-          <th>Nickname</th>
-          <th>Rank</th>
-          <th>Champion</th>
-          <th>Win Rate</th>
-          <th>Champ WR</th>
-          <th>KDA</th>
-          <th>GPM</th>
-          <th>DPM</th>
-          <th>Player Elo</th>
-          <th>Team Elo</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for player in players[5:] %}
-        <tr>
-          <td>{{ player[0] }}</td>
-          <td>{{ player[1] }}</td>
-          <td>{{ player[2] }}</td>
-          <td>{{ player[3] }}%</td>
-          <td>{{ player[4] }}%</td>
-          <td>{{ player[5] }}</td>
-          <td>{{ player[6] }}</td>
-          <td>{{ player[7] }}</td>
-          <td>{{ player[8] }}</td>
-          <td>{{ player[9] }}</td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
+  Bayesian
+  <span data-bs-toggle="tooltip" title="Adjusts prediction using confidence based on Elo variance.">
+    <i class="bi bi-question-circle-fill"></i>
+  </span>:
+  Team 1 — <span style="color: gold;">{{ match[6] }}%</span>, Team 2 — <span style="color: gold;">{{ match[7] }}%</span>
+</div>
+
+{% for team, title, players in [("Team 1", "Team 1", players[:5]), ("Team 2", "Team 2", players[5:])] %}
+<div class="team-section">
+  <h2>{{ title }}</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Nickname</th>
+        <th>Rank</th>
+        <th>Champion</th>
+        <th>WR
+          <span data-bs-toggle="tooltip" title="Player's overall ranked win rate.">
+            <i class="bi bi-question-circle-fill"></i>
+          </span>
+        </th>
+        <th>Champ WR
+          <span data-bs-toggle="tooltip" title="Win rate when using this specific champion.">
+            <i class="bi bi-question-circle-fill"></i>
+          </span>
+        </th>
+        <th>KDA
+          <span data-bs-toggle="tooltip" title="Kill/Death/Assist ratio from recent games.">
+            <i class="bi bi-question-circle-fill"></i>
+          </span>
+        </th>
+        <th>GPM
+          <span data-bs-toggle="tooltip" title="Gold Per Minute — average earned per game minute.">
+            <i class="bi bi-question-circle-fill"></i>
+          </span>
+        </th>
+        <th>DPM
+          <span data-bs-toggle="tooltip" title="Damage Per Minute — average dealt to champions.">
+            <i class="bi bi-question-circle-fill"></i>
+          </span>
+        </th>
+        <th>Player Elo
+          <span data-bs-toggle="tooltip" title="Calculated using rank + performance stats.">
+            <i class="bi bi-question-circle-fill"></i>
+          </span>
+        </th>
+        <th>Team Elo
+          <span data-bs-toggle="tooltip" title="Average Elo of the team used in win prediction.">
+            <i class="bi bi-question-circle-fill"></i>
+          </span>
+        </th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for player in players %}
+      <tr>
+        <td>{{ player[0] }}</td>
+        <td>{{ player[1] }}</td>
+        <td>{{ player[2] }}</td>
+        <td>{{ player[3] }}%</td>
+        <td>{{ player[4] }}%</td>
+        <td>{{ player[5] }}</td>
+        <td>{{ player[6] }}</td>
+        <td>{{ player[7] }}</td>
+        <td>{{ player[8] }}</td>
+        <td>{{ player[9] }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endfor %}
+
+<!-- Bootstrap Tooltip Scripts -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+    tooltipTriggerList.map(function (tooltipTriggerEl) {
+      return new bootstrap.Tooltip(tooltipTriggerEl)
+    })
+  });
+</script>
+
 </body>
 </html>

@@ -144,7 +144,7 @@ async def scrape_match_for_summoner(riot_name, tag, server):
     for participant in participants:
         print(f"🔎 Participant Data: {participant}")
 
-        name = participant.get("summonerName", "Unknown")
+        name = participant.get("summonerName") or participant.get("riotId") or "Unknown"
         summoner_id = participant.get("summonerId")
         player_puuid = participant.get("puuid")
         champ_id = participant.get("championId")
