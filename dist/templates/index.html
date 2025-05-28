@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>League Match Predictor</title>
+  <link href="https://fonts.googleapis.com/css2?family=Beaufort+for+LOL&display=swap" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+  <link rel="stylesheet" href="/static/css/style.css" />
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Beaufort for LOL', serif;
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+      background-attachment: fixed;
+      transition: background-image 1.5s ease-in-out;
+      color: #f0f0f0;
+    }
+    header {
+      background-color: rgba(0, 0, 0, 0.6);
+      padding: 1rem 2rem;
+      border-bottom: 2px solid #444;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    h1 {
+      font-size: 2rem;
+      color: gold;
+    }
+    form {
+      background: rgba(0, 0, 0, 0.7);
+      padding: 1.5rem;
+      border: 1px solid #333;
+      margin: 2rem;
+      border-radius: 8px;
+      box-shadow: 0 0 10px #000;
+    }
+    label, input, select {
+      display: block;
+      margin-bottom: 0.5rem;
+    }
+    input, select {
+      width: 100%;
+      padding: 0.5rem;
+      background: #2a2a2a;
+      border: 1px solid #444;
+      color: #fff;
+    }
+    button {
+      padding: 0.6rem 1.2rem;
+      background: gold;
+      border: none;
+      border-radius: 4px;
+      color: #000;
+      cursor: pointer;
+      margin-top: 0.5rem;
+    }
+    table {
+      width: 90%;
+      margin: 2rem auto;
+      border-collapse: collapse;
+      background-color: rgba(0, 0, 0, 0.7);
+    }
+    th, td {
+      padding: 1rem;
+      border: 1px solid #333;
+      text-align: center;
+    }
+    th {
+      background: #222;
+      color: gold;
+    }
+    a {
+      color: #00bfff;
+      text-decoration: none;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>League of Legends Match Predictor</h1>
+</header>
+
+<form id="scrapeForm" method="POST" action="/start_scraping" style="max-width: 400px; margin: 2rem auto;">
+  <label for="riot_id">
+    Riot ID:
+    <span data-bs-toggle="tooltip" title="Format: Name#TAG (e.g., Faker#KR). Used to fetch your account.">
+      <i class="bi bi-question-circle-fill"></i>
+    </span>
+  </label>
+  <input type="text" id="riot_id" name="riot_id" required>
+
+  <label for="server">
+    Server:
+    <span data-bs-toggle="tooltip" title="Choose your region server. It determines which Riot API region is used.">
+      <i class="bi bi-question-circle-fill"></i>
+    </span>
+  </label>
+  <select id="server" name="server" required>
+    <option value="euw">EUW</option>
+    <option value="na">NA</option>
+    <option value="kr">KR</option>
+    <option value="eune">EUNE</option>
+    <option value="lan">LAN</option>
+    <option value="las">LAS</option>
+    <option value="oce">OCE</option>
+    <option value="ru">RU</option>
+    <option value="tr">TR</option>
+    <option value="jp">JP</option>
+  </select>
+
+  <button type="submit">Start Prediction</button>
+</form>
+
+<section>
+  <h2 style="text-align: center; color: gold;">Match History</h2>
+  <table>
+    <thead>
+    <tr>
+      <th>Summoner</th>
+      <th>Timestamp</th>
+      <th>Server</th>
+      <th>Overview</th>
+    </tr>
+    </thead>
+    <tbody>
+    {% for match in matches %}
+    <tr>
+      <td>{{ match[0] }}</td>
+      <td>{{ match[1] }}</td>
+      <td>{{ match[2] }}</td>
+      <td><a href="{{ url_for('match_details', match_id=match[3]) }}">View</a></td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</section>
+
+<!-- ✅ Bootstrap Tooltips -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+    tooltipTriggerList.map(function (tooltipTriggerEl) {
+      return new bootstrap.Tooltip(tooltipTriggerEl)
+    })
+  });
+</script>
+
+<!-- 🔄 Background Image Rotation -->
+<script>
+  document.addEventListener("DOMContentLoaded", () => {
+    const splashImages = [
+      "/static/images/splash1.jpg", "/static/images/splash2.jpg", "/static/images/splash3.jpg",
+      "/static/images/splash4.jpg", "/static/images/splash5.jpg", "/static/images/splash6.jpg",
+      "/static/images/splash7.jpg", "/static/images/splash8.jpg", "/static/images/splash9.jpg",
+      "/static/images/splash10.jpg", "/static/images/splash11.jpg", "/static/images/splash12.jpg",
+      "/static/images/splash13.jpg", "/static/images/splash14.jpg", "/static/images/splash15.jpg",
+      "/static/images/splash16.jpg", "/static/images/splash17.jpg", "/static/images/splash18.jpg",
+      "/static/images/splash19.jpg", "/static/images/splash20.jpg"
+    ];
+
+    let index = 0;
+    const bg1 = document.createElement('div');
+    const bg2 = document.createElement('div');
+    [bg1, bg2].forEach(bg => {
+      Object.assign(bg.style, {
+        position: 'fixed', top: 0, left: 0, width: '100%', height: '100%',
+        zIndex: '-1', transition: 'opacity 2s ease-in-out',
+        backgroundSize: 'cover', backgroundPosition: 'center',
+        backgroundRepeat: 'no-repeat', backgroundAttachment: 'fixed',
+        opacity: '0'
+      });
+      document.body.appendChild(bg);
+    });
+
+    bg1.style.backgroundImage = `linear-gradient(to bottom, rgba(0,0,0,0.4), rgba(0,0,0,0.6)), url('${splashImages[index]}')`;
+    bg1.style.opacity = '1';
+    let isBg1Active = true;
+    index = (index + 1) % splashImages.length;
+
+    function rotateBackground() {
+      const nextImage = `linear-gradient(to bottom, rgba(0,0,0,0.4), rgba(0,0,0,0.6)), url('${splashImages[index]}')`;
+      if (isBg1Active) {
+        bg2.style.backgroundImage = nextImage;
+        bg2.style.opacity = '1';
+        bg1.style.opacity = '0';
+      } else {
+        bg1.style.backgroundImage = nextImage;
+        bg1.style.opacity = '1';
+        bg2.style.opacity = '0';
+      }
+      isBg1Active = !isBg1Active;
+      index = (index + 1) % splashImages.length;
+    }
+
+    setInterval(rotateBackground, 10000);
+  });
+</script>
+
+</body>
+</html>

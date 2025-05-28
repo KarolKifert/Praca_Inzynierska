@@ -55,5 +55,10 @@ def start_scraping():
 
     return redirect(url_for('match_details', match_id=match_id))
 
+
+import webbrowser
+webbrowser.open("http://localhost:5000")
+
+
 if __name__ == '__main__':
     app.run(debug=True)

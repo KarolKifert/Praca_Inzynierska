@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Match Details</title>
+  <link href="https://fonts.googleapis.com/css2?family=Beaufort+for+LOL&display=swap" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Beaufort for LOL', serif;
+      margin: 0;
+      background-color: #0a0a0a;
+      color: #f0f0f0;
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+    }
+    header {
+      background-color: rgba(0, 0, 0, 0.7);
+      padding: 1rem 2rem;
+      border-bottom: 2px solid #444;
+      text-align: center;
+    }
+    h1 {
+      color: gold;
+      font-size: 2rem;
+    }
+    .team-section {
+      width: 90%;
+      margin: 2rem auto;
+      padding: 1rem;
+      background-color: rgba(0, 0, 0, 0.7);
+      border: 1px solid #333;
+      border-radius: 8px;
+    }
+    h2 {
+      text-align: center;
+      color: gold;
+      margin-bottom: 1rem;
+    }
+    .overview {
+      text-align: center;
+      font-size: 1.2rem;
+      margin: 1.5rem auto;
+      background-color: rgba(255, 215, 0, 0.05);
+      padding: 1rem;
+      border-radius: 6px;
+      width: 80%;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    th, td {
+      border: 1px solid #333;
+      padding: 0.75rem;
+      text-align: center;
+    }
+    th {
+      background-color: #222;
+      color: gold;
+    }
+    tr:nth-child(even) {
+      background-color: rgba(255, 255, 255, 0.05);
+    }
+    a {
+      color: #00bfff;
+      text-decoration: none;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>Match Details</h1>
+</header>
+
+<div class="overview">
+  <strong>Win Probability Overview</strong><br>
+  Weighted:
+<span data-bs-toggle="tooltip" data-bs-html="true" title="
+<strong>Weighted Win Probability</strong><br>
+This prediction is based purely on the average Elo of both teams. Each player's Elo is calculated using their solo queue rank and adjusted for performance stats like win rate, KDA, gold per minute, and damage per minute.
+<br><br>
+The formula used is adapted from the classic Elo system (similar to chess):<br>
+<em>P = 1 / (1 + 10^((Elo_team2 - Elo_team1)/400))</em><br><br>
+This value assumes that past performance is the best predictor of future performance, without factoring in uncertainty or sample size.
+">
+  <i class="bi bi-question-circle-fill"></i>
+</span>
+
+  Team 1 — <span style="color: gold;">{{ match[4] }}%</span>, Team 2 — <span style="color: gold;">{{ match[5] }}%</span><br>
+
+  Bayesian:
+<span data-bs-toggle="tooltip" data-bs-html="true" title="
+<strong>Bayesian Win Probability</strong><br>
+This prediction enhances the weighted Elo method by introducing statistical confidence. It takes into account not just the average Elo of each team, but also how consistent and trustworthy that Elo is.
+<br><br>
+If players have high variance in performance or limited recent match data, the Bayesian model becomes more cautious and 'hedges' the prediction.
+<br><br>
+This approach uses a normal distribution-based Bayesian formula that calculates the probability of Team 1 outperforming Team 2 based on both mean Elo and team variance.
+">
+  <i class="bi bi-question-circle-fill"></i>
+</span>
+
+  Team 1 — <span style="color: gold;">{{ match[6] }}%</span>, Team 2 — <span style="color: gold;">{{ match[7] }}%</span>
+</div>
+
+{% for team, title, players in [("Team 1", "Team 1", players[:5]), ("Team 2", "Team 2", players[5:])] %}
+<div class="team-section">
+  <h2>{{ title }}</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Nickname</th>
+
+        <th>Rank
+          <span data-bs-toggle="tooltip" title="Player's current solo queue rank (e.g., Gold I, Challenger).">
+            <i class="bi bi-question-circle-fill"></i>
+          </span>
+        </th>
+
+        <th>Champion
+          <span data-bs-toggle="tooltip" title="Champion the player is using in this live match.">
+            <i class="bi bi-question-circle-fill"></i>
+          </span>
+        </th>
+
+        <th>WR
+          <span data-bs-toggle="tooltip" title="Player's overall ranked win rate from recent games.">
+            <i class="bi bi-question-circle-fill"></i>
+          </span>
+        </th>
+
+        <th>Champ WR
+          <span data-bs-toggle="tooltip" title="Win rate on this specific champion based on recent matches.">
+            <i class="bi bi-question-circle-fill"></i>
+          </span>
+        </th>
+
+        <th>KDA
+          <span data-bs-toggle="tooltip" title="Kill/Death/Assist ratio. Higher is better.">
+            <i class="bi bi-question-circle-fill"></i>
+          </span>
+        </th>
+
+        <th>GPM
+          <span data-bs-toggle="tooltip" title="Gold Per Minute. Measures income efficiency.">
+            <i class="bi bi-question-circle-fill"></i>
+          </span>
+        </th>
+
+        <th>DPM
+          <span data-bs-toggle="tooltip" title="Damage Per Minute. Measures average damage dealt to champions.">
+            <i class="bi bi-question-circle-fill"></i>
+          </span>
+        </th>
+
+        <th>Player Elo
+          <span data-bs-toggle="tooltip" title="Calculated from solo queue rank, adjusted using stats like WR, KDA, GPM, DPM. Represents skill level of individual player.">
+            <i class="bi bi-question-circle-fill"></i>
+          </span>
+        </th>
+
+        <th>Team Elo
+          <span data-bs-toggle="tooltip" title="Average of all 5 player Elos. Used for probability calculations.">
+            <i class="bi bi-question-circle-fill"></i>
+          </span>
+        </th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for player in players %}
+      <tr>
+        <td>{{ player[0] }}</td>  <!-- Nickname -->
+        <td>{{ player[1] }}</td>  <!-- Rank -->
+        <td>{{ player[2] }}</td>  <!-- Champion -->
+        <td>{{ player[3] }}%</td> <!-- Win Rate -->
+        <td>{{ player[4] }}%</td> <!-- Champ WR -->
+        <td>{{ player[5] }}</td>  <!-- KDA -->
+        <td>{{ player[6] }}</td>  <!-- GPM -->
+        <td>{{ player[7] }}</td>  <!-- DPM -->
+        <td>{{ player[8] }}</td>  <!-- Player Elo -->
+        <td>{{ player[9] }}</td>  <!-- Team Elo -->
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endfor %}
+
+
+<!-- Bootstrap Tooltip Scripts -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    tooltipTriggerList.map(el => new bootstrap.Tooltip(el));
+  });
+</script>
+
+
+</body>
+</html>
