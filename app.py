@@ -3,8 +3,24 @@ import asyncio
 from scraper import scrape_match_for_summoner
 from database import save_match_data_to_db, get_match_history, get_match_data, get_match_by_id
 from elo_calculator import calculate_team_probabilities
+from database import init_db
+import os
+from dotenv import load_dotenv
 
 app = Flask(__name__)
+
+init_db()
+
+basedir = os.path.dirname(os.path.abspath(__file__))
+dotenv_path = os.path.join(basedir, '.env')
+load_dotenv(dotenv_path)
+
+RIOT_API_KEY = os.getenv("RIOT_API_KEY")
+
+if not RIOT_API_KEY:
+    print("❌ ERROR: Riot API key not found in .env file.")
+    input("Press Enter to exit...")
+    exit()
 
 @app.route('/')
 def index():
