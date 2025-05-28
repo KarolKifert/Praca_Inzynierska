@@ -1,65 +1,112 @@
 import numpy as np
 import re
 
-# Rank Elo mapping
+# === Base Elo mapping by rank tier ===
 rank_values = {
     "Iron": 1000, "Bronze": 1200, "Silver": 1400, "Gold": 1600,
     "Platinum": 1800, "Emerald": 2000, "Diamond": 2200,
     "Master": 2500, "Grandmaster": 2700, "Challenger": 3000
 }
 
-pop_means = {'win_rate': 50, 'kda': 2.5, 'gold_per_minute': 400, 'damage_per_minute': 500}
-pop_std = {'win_rate': 10, 'kda': 1.0, 'gold_per_minute': 100, 'damage_per_minute': 200}
+# === Population means & standard deviations for performance stats ===
+pop_means = {
+    'win_rate': 50,
+    'kda': 2.5,
+    'gold_per_minute': 400,
+    'damage_per_minute': 500
+}
+
+pop_std = {
+    'win_rate': 10,
+    'kda': 1.0,
+    'gold_per_minute': 100,
+    'damage_per_minute': 200
+}
+
+# === Stat impact weights for Elo adjustment ===
+stat_weights = {
+    'win_rate': 50,
+    'kda': 10,
+    'gold_per_minute': 25,
+    'damage_per_minute': 15
+}
+
 
 def convert_rank_to_elo(rank_str):
-    import re
+    """
+    Convert a textual rank like 'Gold II (89 LP)' into a numeric Elo base value.
+    """
     match = re.match(r"(\w+) (\d) \((\d+)LP\)", rank_str)
     if not match:
-        return 1500
+        return 1500  # Fallback Elo for unranked or invalid format
     tier, division, lp = match.groups()
     base = rank_values.get(tier, 1500)
-    bonus = (4 - int(division)) * 50
-    return base + bonus + int(lp)
+    bonus = (4 - int(division)) * 50  # Division I is best
+    return base + int(lp) + bonus
 
-def convert_to_elo(value, metric):
+
+def z_score(value, metric):
+    """
+    Convert a raw stat value into a z-score (standard deviation from the mean).
+    """
     try:
         value = float(value)
     except:
         value = pop_means[metric]
-    z = (value - pop_means[metric]) / pop_std[metric]
-    return 1500 + z * 100
+    return (value - pop_means[metric]) / pop_std[metric]
+
 
 def calculate_player_elo(player):
+    """
+    Compute the player's overall Elo based on:
+    - Absolute rank Elo
+    - Adjustments from performance stats using z-scores and weights
+    """
     rank_elo = convert_rank_to_elo(player.get("rank", "Unranked"))
-    winrate_elo = convert_to_elo(player.get("general_winrate", 50), "win_rate")
-    kda_elo = convert_to_elo(player.get("kda", 2.5), "kda")
-    gpm_elo = convert_to_elo(player.get("gold_per_minute", 400), "gold_per_minute")
-    dpm_elo = convert_to_elo(player.get("damage_per_minute", 500), "damage_per_minute")
 
-    total_elo = rank_elo  # ✅ Baseline Elo stays absolute
+    # z-scores for stats
+    winrate_z = z_score(player.get("general_winrate", 50), "win_rate")
+    kda_z = z_score(player.get("kda", 2.5), "kda")
+    gpm_z = z_score(player.get("gold_per_minute", 400), "gold_per_minute")
+    dpm_z = z_score(player.get("damage_per_minute", 500), "damage_per_minute")
 
-    # ✅ Stat deviations are relative adjustments
-    total_elo += (winrate_elo - 1500) * 0.5
-    total_elo += (kda_elo - 1500) * 0.05
-    total_elo += (gpm_elo - 1500) * 0.25
-    total_elo += (dpm_elo - 1500) * 0.1
+    # Final Elo = rank base + stat-based adjustments
+    total_elo = rank_elo
+    total_elo += winrate_z * stat_weights["win_rate"]
+    total_elo += kda_z * stat_weights["kda"]
+    total_elo += gpm_z * stat_weights["gold_per_minute"]
+    total_elo += dpm_z * stat_weights["damage_per_minute"]
 
     return total_elo
 
+
 def expected_win_probability(elo_a, elo_b):
+    """
+    Standard Elo-based expected win chance.
+    """
     return 1 / (1 + 10 ** ((elo_b - elo_a) / 400))
 
-def calculate_team_probabilities(team1, team2):
-    import numpy as np
 
+def calculate_team_probabilities(team1, team2):
+    """
+    Calculates both weighted and Bayesian win probabilities based on team Elo values.
+    """
     team1_elos = [calculate_player_elo(p) for p in team1]
     team2_elos = [calculate_player_elo(p) for p in team2]
 
-    avg_elo_team1 = np.mean(team1_elos)
-    avg_elo_team2 = np.mean(team2_elos)
+    mean1 = np.mean(team1_elos)
+    mean2 = np.mean(team2_elos)
 
-    prob1 = expected_win_probability(avg_elo_team1, avg_elo_team2)
+    # Weighted (Elo-based)
+    prob1 = expected_win_probability(mean1, mean2)
     prob2 = 1 - prob1
+
+    # Bayesian (accounts for team Elo variance)
+    var1 = np.var(team1_elos) + 100
+    var2 = np.var(team2_elos) + 100
+    diff = mean1 - mean2
+    bayes1 = 1 / (1 + np.exp(-diff / np.sqrt(var1 + var2)))
+    bayes2 = 1 - bayes1
 
     return (
         {
@@ -67,7 +114,7 @@ def calculate_team_probabilities(team1, team2):
             "team2_win_probability": round(prob2 * 100, 2)
         },
         {
-            "team1_win_probability": None,
-            "team2_win_probability": None
+            "team1_win_probability": round(bayes1 * 100, 2),
+            "team2_win_probability": round(bayes2 * 100, 2)
         }
     )
